@@ -1,10 +1,12 @@
 import ccxt
 import pandas as pd
+from datetime import datetime
 
-def fetch_ohlcv_binance(symbol, timeframe, since):
+def fetch_ohlcv_binance(symbol, timeframe, start_date):
     exchange = ccxt.binance()
     all_ohlcv = []
     limit = 200  # Most exchanges allow a max of 500 entries per request
+    since = int(start_date.timestamp() * 1000)
     while True:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
         if not ohlcv:
@@ -20,7 +22,7 @@ def fetch_ohlcv_binance(symbol, timeframe, since):
 def fetch_symbol_list_binance(type='spot', suffix='USDT'):
     '''
     Fetches symbol list of all matching coins from binance.
-    type: 'spot' or 'futures' ?
+    type: 'spot' or 'futures' #change
     suffix: 'USDT' or 'BTC'
     '''
     exchange = ccxt.binance()

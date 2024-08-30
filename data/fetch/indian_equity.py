@@ -5,11 +5,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yfinance as yf
 from nsepython import nsefetch, nse_eq_symbols
-from logger.custom_logger import get_logger
+from datetime import datetime, timedelta
 
-logger = get_logger(__file__)
 
-def fetch_ohlcv_indian_equity(symbol, start_date, end_date):
+def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.now()):
     '''
     returns data from start_date to end_date for the given symbol.
     Reiterate for all symbols to get all data.
@@ -17,13 +16,13 @@ def fetch_ohlcv_indian_equity(symbol, start_date, end_date):
     try:
         if '.NS' not in symbol:
             symbol = symbol + '.NS'
-        data = yf.download(symbol, start=start_date, end=end_date)
+        data = yf.download(symbol, start=start_date, end=end_date, interval=timeframe)
         data.reset_index(inplace=True)
         data.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
         return data
     except Exception as e:
         print('msg=%s, symbol=%s, error=%s', 'Error fetching data for symbol', symbol, str(e))
-        raise Exception(f"Error fetching data for {symbol}: {e}")
+        return None
 
 def fetch_symbol_list_indian_equity(complete_list=False):
     '''
