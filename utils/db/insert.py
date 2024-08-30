@@ -46,7 +46,7 @@ def insert_symbol_if_not_exists(conn, symbol_name, market_id):
     symbol_id = cursor.fetchone()[0]
     return symbol_id
 
-def insert_ohlcv_data(conn, symbol_id, df):
+def insert_ohlcv_data(conn, symbol_id, timeframe, df):
     """Insert OHLCV data into the ohlcv_data table."""
     cursor = conn.cursor()
 
@@ -57,11 +57,11 @@ def insert_ohlcv_data(conn, symbol_id, df):
     cursor.executemany("""
         INSERT OR IGNORE INTO ohlcv_data (symbol_id, timeframe, timestamp, open, high, low, close, volume)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    """, [(symbol_id, '1d', *record) for record in ohlcv_records_list])  # Example: Assuming timeframe is '1d'
+    """, [(symbol_id, timeframe, *record) for record in ohlcv_records_list])  # Example: Assuming timeframe is '1d'
     
     conn.commit()
 
-def insert_data(market_name, symbol_name, df):
+def insert_data(market_name, symbol_name, timeframe, df):
     """Main function to insert data into the database."""
     conn = get_db_connection()
     if not conn:
@@ -75,7 +75,7 @@ def insert_data(market_name, symbol_name, df):
         symbol_id = insert_symbol_if_not_exists(conn, symbol_name, market_id)
         
         # Insert OHLCV data for the symbol
-        insert_ohlcv_data(conn, symbol_id, df)
+        insert_ohlcv_data(conn, symbol_id, timeframe, df)
         
         print(f"Data for {symbol_name} in {market_name} inserted successfully.")
     except Exception as e:

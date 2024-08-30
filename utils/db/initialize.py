@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS ohlcv_data (
 """
 
 # Function to initialize the database
-def initialize_database(db_path='database/db/ohlcv_data.db'):
+def initialize_database(db_path=database_path):
     # Connect to SQLite database
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

@@ -1,4 +1,5 @@
-from fetch import fetch_ohlcv_indian_equity, fetch_symbol_list_indian_equity
+from data.fetch.indian_equity import fetch_ohlcv_indian_equity, fetch_symbol_list_indian_equity
+from tqdm import tqdm
 
 def gather_ohlcv_indian_equity(timeframe='1d', start_date=None, complete_list=False):
     '''
@@ -13,5 +14,5 @@ def gather_ohlcv_indian_equity(timeframe='1d', start_date=None, complete_list=Fa
     '''
     
     symbols = fetch_symbol_list_indian_equity(complete_list)
-    data = {symbol: df for symbol in symbols if (df := fetch_ohlcv_indian_equity(symbol, timeframe, start_date)) is not None}
-    return data
+    data = {symbol: df for symbol in tqdm(symbols) if (df := fetch_ohlcv_indian_equity(symbol, timeframe, start_date)) is not None}
+    return symbols, data

@@ -15,6 +15,7 @@ def fetch_ohlcv_binance(symbol, timeframe, start_date):
         since = ohlcv[-1][0] + 1  # Update since to get new data from the end of the last fetch
     df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
     if 'timestamp' not in df.columns:
         print(f"Error: 'timestamp' column missing in data for {symbol}")
     return df

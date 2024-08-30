@@ -1,5 +1,5 @@
-from fetch import fetch_ohlcv_binance, fetch_symbol_list_binance
-from datetime import datetime, timedelta
+from data.fetch.crypto_binance import fetch_ohlcv_binance, fetch_symbol_list_binance
+from tqdm import tqdm
 
 import os
 import sys
@@ -19,5 +19,5 @@ def gather_ohlcv_binance(timeframe='1d', start_date=None, type='spot', suffix='U
     data: dict of {symbol: df}
     '''
     symbols = fetch_symbol_list_binance(type, suffix)
-    data = {symbol: df for symbol in symbols if (df := fetch_ohlcv_binance(symbol, timeframe, start_date)) is not None}
-    return data
+    data = {symbol: df for symbol in tqdm(symbols) if (df := fetch_ohlcv_binance(symbol, timeframe, start_date)) is not None}
+    return symbols, data
