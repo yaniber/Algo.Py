@@ -3,3 +3,4 @@ strategy/trend/
 .env
 *.db
 *.log
+.pytest_cache/
