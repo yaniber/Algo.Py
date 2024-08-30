@@ -1,7 +1,7 @@
 import ccxt
 import pandas as pd
 
-def fetch_ohlcv(symbol, timeframe, since):
+def fetch_ohlcv_binance(symbol, timeframe, since):
     exchange = ccxt.binance()
     all_ohlcv = []
     limit = 200  # Most exchanges allow a max of 500 entries per request
@@ -16,3 +16,14 @@ def fetch_ohlcv(symbol, timeframe, since):
     if 'timestamp' not in df.columns:
         print(f"Error: 'timestamp' column missing in data for {symbol}")
     return df
+
+def fetch_symbol_list_binance(type='spot', suffix='USDT'):
+    '''
+    Fetches symbol list of all matching coins from binance.
+    type: 'spot' or 'futures' ?
+    suffix: 'USDT' or 'BTC'
+    '''
+    exchange = ccxt.binance()
+    markets = exchange.load_markets()
+    symbols = [market.split(':')[0] for market in markets if markets[market]['type'] == type and market.split(':')[0].endswith(f'/{suffix}')] 
+    return symbols

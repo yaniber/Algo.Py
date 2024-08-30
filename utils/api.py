@@ -18,7 +18,7 @@ def get_retry(url: str, headers: dict = None, params: dict = None, rate_limit: i
         
         # Error in getting data
         if response.status_code != 200:
-            logger.error('msg=%s, url=%s, response_status_code=%s', 'Error in getting data from api', url, response.status_code)
+            print('msg=%s, url=%s, response_status_code=%s', 'Error in getting data from api', url, response.status_code)
             current_retry += 1
             time.sleep(rate_limit * 30)
             continue
@@ -47,7 +47,7 @@ def get_retry(url: str, headers: dict = None, params: dict = None, rate_limit: i
         time.sleep(rate_limit)
     
     if current_retry == retry_count:
-        logger.error('msg=%s, url=%s, retry_count=%s', 'Failed to get data from api after retries', url, retry_count)
+        print('msg=%s, url=%s, retry_count=%s', 'Failed to get data from api after retries', url, retry_count)
         raise Exception('Failed to get data from api after retries')
     
     return complete_data

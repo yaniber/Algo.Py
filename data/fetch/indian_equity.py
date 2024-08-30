@@ -9,7 +9,7 @@ from logger.custom_logger import get_logger
 
 logger = get_logger(__file__)
 
-def fetch_ohlcv(symbol, start_date, end_date):
+def fetch_ohlcv_indian_equity(symbol, start_date, end_date):
     '''
     returns data from start_date to end_date for the given symbol.
     Reiterate for all symbols to get all data.
@@ -22,19 +22,19 @@ def fetch_ohlcv(symbol, start_date, end_date):
         data.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
         return data
     except Exception as e:
-        logger.error('msg=%s, symbol=%s, error=%s', 'Error fetching data for symbol', symbol, str(e))
+        print('msg=%s, symbol=%s, error=%s', 'Error fetching data for symbol', symbol, str(e))
         raise Exception(f"Error fetching data for {symbol}: {e}")
 
-def fetch_symbol_list(complete_list=False):
+def fetch_symbol_list_indian_equity(complete_list=False):
     '''
     Fetches the list of all symbols from the NSE website if complete_list = True
     Otherwise fetches only the top 250 stocks.
     '''
     try:
         # Get stock lists from indices
-        nifty_50_stocks = get_index_stocks('NIFTY 50')
-        midcap_100_stocks = get_index_stocks('NIFTY MIDCAP 100')
-        smallcap_100_stocks = get_index_stocks('NIFTY SMLCAP 100')
+        nifty_50_stocks = get_index_stocks_indian_equity('NIFTY 50')
+        midcap_100_stocks = get_index_stocks_indian_equity('NIFTY MIDCAP 100')
+        smallcap_100_stocks = get_index_stocks_indian_equity('NIFTY SMLCAP 100')
 
         complete_symbols_list = nse_eq_symbols()
 
@@ -53,10 +53,14 @@ def fetch_symbol_list(complete_list=False):
         all_symbols = list(set(all_symbols))
         return all_symbols
     except Exception as e:
-        logger.error('msg=%s, error=%s', 'Error fetching symbol list', str(e))
+        print('msg=%s, error=%s', 'Error fetching symbol list', str(e))
         raise Exception(f"Error fetching symbol list: {e}")
 
-def get_index_stocks(index_name):
+def get_index_stocks_indian_equity(index_name):
+    '''
+    Fetches the list of stocks for the given index name.
+    - Used internally
+    '''
     try:
         # Fetch stock symbols for the specified index
         if index_name == 'NIFTY 50':
@@ -67,5 +71,5 @@ def get_index_stocks(index_name):
             stocks = nsefetch('https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%20SMLCAP%20100')['data']
         return [f"{stock['symbol']}.NS" for stock in stocks]
     except Exception as e:
-        logger.error('msg=%s, index_name=%s, error=%s', 'Error fetching index stocks', index_name, str(e))
+        print('msg=%s, index_name=%s, error=%s', 'Error fetching index stocks', index_name, str(e))
         raise Exception(f"Error fetching index stocks for {index_name}: {e}")
