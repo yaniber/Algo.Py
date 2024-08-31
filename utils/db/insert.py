@@ -53,8 +53,6 @@ def insert_ohlcv_data(conn, symbol_id, timeframe, df):
     # Prepare data for insertion
     ohlcv_records = df.to_records(index=False)  # Convert DataFrame to records for SQLite insertion
     ohlcv_records_list = list(ohlcv_records)
-    for record in ohlcv_records_list:
-        print(float(record['open']), float(record['high']), float(record['low']), float(record['close']), float(record['volume']))
 
     cursor.executemany("""
         INSERT OR IGNORE INTO ohlcv_data (symbol_id, timeframe, timestamp, open, high, low, close, volume)
@@ -69,7 +67,6 @@ def insert_technical_indicators(conn, symbol_id, timeframe, df):
     # Prepare data for insertion
     indicator_records = df.to_records(index=False)  # Convert DataFrame to records for SQLite insertion
     indicator_records_list = list(indicator_records)
-    print(indicator_records_list)
 
     cursor.executemany("""
         INSERT OR REPLACE INTO technical_indicators (symbol_id, timeframe, timestamp, indicator_name, indicator_value)

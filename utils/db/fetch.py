@@ -53,13 +53,14 @@ def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entrie
         market, symbol, timeframe, timestamp, open_, high, low, close, volume, indicator_name, indicator_value = row
         if symbol not in data:
             data[symbol] = []
-        data[symbol].append([timestamp, open_, high, low, close, volume, indicator_name, indicator_value])
+        # Append the row with a default value for indicator_name and indicator_value if they are None
+        data[symbol].append([timestamp, open_, high, low, close, volume, indicator_name or 'None', indicator_value or 0])
 
     # Convert to DataFrame and pivot indicators
     result = {}
     for symbol, entries in data.items():
         df = pd.DataFrame(entries, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'indicator_name', 'indicator_value'])
-        df_pivot = df.pivot_table(index=['timestamp', 'open', 'high', 'low', 'close', 'volume'], columns='indicator_name', values='indicator_value').reset_index()
+        df_pivot = df.pivot_table(index=['timestamp', 'open', 'high', 'low', 'close', 'volume'], columns='indicator_name', values='indicator_value', fill_value=0).reset_index()
         result[symbol] = df_pivot
 
     conn.close()
