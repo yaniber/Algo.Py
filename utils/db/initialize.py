@@ -26,6 +26,16 @@ Schema Overview
     Constraints:
     UNIQUE (symbol_id, timeframe, timestamp)
 
+    Table Name: technical_indicators
+        Columns:
+        indicator_id: INTEGER, PRIMARY KEY, AUTOINCREMENT
+        symbol_id: INTEGER, FOREIGN KEY references symbols(symbol_id)
+        timeframe: TEXT, NOT NULL
+        timestamp: DATETIME
+        indicator_name: TEXT, NOT NULL
+        indicator_value: REAL
+    Constraints:
+    UNIQUE (symbol_id, timeframe, timestamp, indicator_name)
 '''
 
 import sqlite3
@@ -71,6 +81,19 @@ CREATE TABLE IF NOT EXISTS ohlcv_data (
 );
 """
 
+CREATE_TECHNICAL_INDICATORS_TABLE = """
+CREATE TABLE IF NOT EXISTS technical_indicators (
+    indicator_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol_id INTEGER,
+    timeframe TEXT NOT NULL,
+    timestamp DATETIME,
+    indicator_name TEXT NOT NULL,
+    indicator_value REAL,
+    FOREIGN KEY (symbol_id) REFERENCES symbols (symbol_id),
+    UNIQUE (symbol_id, timeframe, timestamp, indicator_name)
+);
+"""
+
 # Function to initialize the database
 def initialize_database(db_path=database_path):
     # Connect to SQLite database
@@ -81,6 +104,7 @@ def initialize_database(db_path=database_path):
     cursor.execute(CREATE_MARKET_TABLE)
     cursor.execute(CREATE_SYMBOLS_TABLE)
     cursor.execute(CREATE_OHLCV_DATA_TABLE)
+    cursor.execute(CREATE_TECHNICAL_INDICATORS_TABLE)
     
     # Commit changes and close connection
     conn.commit()

@@ -53,16 +53,44 @@ def insert_ohlcv_data(conn, symbol_id, timeframe, df):
     # Prepare data for insertion
     ohlcv_records = df.to_records(index=False)  # Convert DataFrame to records for SQLite insertion
     ohlcv_records_list = list(ohlcv_records)
+    for record in ohlcv_records_list:
+        print(float(record['open']), float(record['high']), float(record['low']), float(record['close']), float(record['volume']))
 
     cursor.executemany("""
         INSERT OR IGNORE INTO ohlcv_data (symbol_id, timeframe, timestamp, open, high, low, close, volume)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    """, [(symbol_id, timeframe, *record) for record in ohlcv_records_list])  # Example: Assuming timeframe is '1d'
+    """, [(symbol_id, timeframe, record['timestamp'], float(record['open']), float(record['high']), float(record['low']), float(record['close']), float(record['volume'])) for record in ohlcv_records_list])  # Ensure all data is in float
+    conn.commit()
+
+def insert_technical_indicators(conn, symbol_id, timeframe, df):
+    """Insert technical indicators into the technical_indicators table."""
+    cursor = conn.cursor()
+
+    # Prepare data for insertion
+    indicator_records = df.to_records(index=False)  # Convert DataFrame to records for SQLite insertion
+    indicator_records_list = list(indicator_records)
+    print(indicator_records_list)
+
+    cursor.executemany("""
+        INSERT OR REPLACE INTO technical_indicators (symbol_id, timeframe, timestamp, indicator_name, indicator_value)
+        VALUES (?, ?, ?, ?, ?);
+    """, [(symbol_id, timeframe, record['timestamp'], record['indicator_name'], float(record['indicator_value'])) for record in indicator_records_list])
     
     conn.commit()
 
-def insert_data(market_name, symbol_name, timeframe, df):
-    """Main function to insert data into the database."""
+def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indicators_df=None):
+    """
+    Main function to insert data into the database.
+    
+    Input:
+    market_name: str 
+    symbol_name: str
+    timeframe: str
+    df: pd.DataFrame of format: timestamp, open, high, low, close, volume
+    indicators: bool : True if indicators are to be inserted, False if OHLCV data is to be inserted
+    indicators_df: pd.DataFrame of format: timestamp, indicator_name, indicator_value
+    
+    """
     conn = get_db_connection()
     if not conn:
         return
@@ -74,8 +102,12 @@ def insert_data(market_name, symbol_name, timeframe, df):
         # Ensure symbol exists and get symbol_id
         symbol_id = insert_symbol_if_not_exists(conn, symbol_name, market_id)
         
-        # Insert OHLCV data for the symbol
-        insert_ohlcv_data(conn, symbol_id, timeframe, df)
+        # Insert technical indicators for the symbol
+        if indicators:
+            insert_technical_indicators(conn, symbol_id, timeframe, indicators_df)
+        else:
+            # Insert OHLCV data for the symbol
+            insert_ohlcv_data(conn, symbol_id, timeframe, df)
         
         print(f"Data for {symbol_name} in {market_name} inserted successfully.")
     except Exception as e:
@@ -98,6 +130,16 @@ if __name__ == "__main__":
         'volume': [1000, 2000]
     })
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+
+    # Sample indicators DataFrame creation as an example (Replace this with actual data fetching)
+    indicators_df = pd.DataFrame({
+        'timestamp': [1633046400000, 1633046460000],
+        'indicator_name': ['ema', 'ema'],
+        'indicator_value': [145.3, 145.4]
+    })
+    indicators_df['timestamp'] = pd.to_datetime(indicators_df['timestamp'], unit='ms')
+    indicators_df['timestamp'] = indicators_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     # Insert the data into the database
-    insert_data(market_name, symbol_name, df)
+    insert_data(market_name, symbol_name, '1d', df, indicators_df)
