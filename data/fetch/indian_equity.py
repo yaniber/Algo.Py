@@ -14,7 +14,7 @@ def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.n
     Reiterate for all symbols to get all data.
     '''
     try:
-        if '.NS' not in symbol:
+        if '.NS' not in symbol and '^' not in symbol:
             symbol = symbol + '.NS'
         data = yf.download(symbol, start=start_date, end=end_date, interval=timeframe)
         data.reset_index(inplace=True)

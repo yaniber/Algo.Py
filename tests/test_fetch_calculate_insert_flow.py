@@ -1,7 +1,7 @@
 import pytest
-from utils.flows.indicators_calculate_insert import fetch_calculate_and_insert
+from utils.flows.fetch_calculate_insert import fetch_calculate_and_insert
 from utils.db.fetch import fetch_entries
-from utils.calculation.ema import calculate_ema
+from utils.calculation.indicators import calculate_ema, calculate_exponential_regression
 from utils.db.insert import get_db_connection
 
 def test_fetch_calculate_and_insert():

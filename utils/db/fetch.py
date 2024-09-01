@@ -1,5 +1,10 @@
 import pandas as pd
 from utils.db.insert import get_db_connection
+import time
+import diskcache as dc
+
+# Create a cache object
+cache = dc.Cache('database/db')
 
 def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entries=False):
     '''
@@ -15,6 +20,13 @@ def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entrie
     A dictionary of pandas DataFrames, where each key is a symbol and each value is a DataFrame of OHLCV data and technical indicators.
     {symbol: pd.DataFrame}
     '''
+    # Cache key based on function arguments
+    cache_key = (market_name, timeframe, tuple(symbol_list) if symbol_list else None, all_entries, int(time.time() // cache_period(timeframe)))
+
+    # Check if result is in cache
+    if cache_key in cache:
+        return cache[cache_key]
+
     conn = get_db_connection()
     if not conn:
         return None
@@ -64,4 +76,21 @@ def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entrie
         result[symbol] = df_pivot
 
     conn.close()
+
+    # Store result in cache
+    cache[cache_key] = result
+
+    # or Store result in cache with expiration time
+    #cache.set(cache_key, result, expire=cache_period(timeframe))
+
     return result
+
+def cache_period(timeframe):
+    if timeframe == '1d':
+        return 86400  # 1 day in seconds
+    elif timeframe == '1h':
+        return 3600  # 1 hour in seconds
+    elif timeframe == '15m':
+        return 900  # 15 minutes in seconds
+    else:
+        return 86400  # Default to 1 day

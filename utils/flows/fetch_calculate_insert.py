@@ -1,7 +1,7 @@
 import pandas as pd
 from utils.db.fetch import fetch_entries
 from utils.db.insert import insert_data
-from utils.calculation.ema import calculate_ema
+from utils.calculation.indicators import calculate_ema
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import concurrent.futures

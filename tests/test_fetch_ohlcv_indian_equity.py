@@ -3,7 +3,7 @@ from data.fetch.indian_equity import fetch_ohlcv_indian_equity
 from datetime import datetime
 
 def test_fetch_ohlcv_indian_equity():
-    symbol = "RELIANCE.NS"
+    symbol = "^NSEI"
     timeframe = "1d"
     start_date = datetime(2021, 1, 1)
     data = fetch_ohlcv_indian_equity(symbol, timeframe, start_date)
