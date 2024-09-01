@@ -4,5 +4,6 @@ strategy/trend/
 *.db
 *.log
 .pytest_cache/
-database/db/15/
+database/db/*
 *.db*
+to-do.txt

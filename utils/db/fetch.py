@@ -94,3 +94,9 @@ def cache_period(timeframe):
         return 900  # 15 minutes in seconds
     else:
         return 86400  # Default to 1 day
+
+def clear_cache():
+    """
+    Clears the entire cache.
+    """
+    cache.clear()

@@ -9,7 +9,7 @@ def calculate_technical_indicators(market_name, timeframe='1d'):
     '''
     fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_ema, length=100)
     fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_ema, length=200)
-    fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_supertrend)
+    fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_supertrend, atr_multiplier=3.0, length=10)
     fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_exponential_regression, window=90)
     fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_exponential_regression, window=30)
     fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, calculation_func=calculate_exponential_regression, window=15)
