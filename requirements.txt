@@ -12,4 +12,4 @@ scikit-learn==1.5.1
 scipy==1.14.1
 tqdm==4.66.1
 yfinance==0.2.40
-numpy==2.1.1
+numpy==1.26.4
