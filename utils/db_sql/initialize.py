@@ -38,97 +38,76 @@ Schema Overview
     UNIQUE (symbol_id, timeframe, timestamp, indicator_name)
 '''
 
-import psycopg2
+import sqlite3
 import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path='config/.env')
 
-# Access the DATABASE_URL environment variable
-database_url = os.getenv('DATABASE_URL')
+# Access the DATABASE_PATH environment variable
+database_path = os.getenv('DATABASE_PATH')
 
 # SQL schema definitions
 CREATE_MARKET_TABLE = """
 CREATE TABLE IF NOT EXISTS market (
-    market_id SERIAL PRIMARY KEY,
+    market_id INTEGER PRIMARY KEY AUTOINCREMENT,
     market_name TEXT NOT NULL UNIQUE
 );
 """
 
 CREATE_SYMBOLS_TABLE = """
 CREATE TABLE IF NOT EXISTS symbols (
-    symbol_id SERIAL PRIMARY KEY,
+    symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL UNIQUE,
     market_id INTEGER,
-    FOREIGN KEY (market_id) REFERENCES market (market_id) ON DELETE CASCADE
+    FOREIGN KEY (market_id) REFERENCES market (market_id)
 );
 """
 
 CREATE_OHLCV_DATA_TABLE = """
 CREATE TABLE IF NOT EXISTS ohlcv_data (
-    ohlcv_id SERIAL PRIMARY KEY,
+    ohlcv_id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol_id INTEGER,
     timeframe TEXT NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
+    timestamp DATETIME,
     open REAL,
     high REAL,
     low REAL,
     close REAL,
     volume REAL,
-    FOREIGN KEY (symbol_id) REFERENCES symbols (symbol_id) ON DELETE CASCADE,
+    FOREIGN KEY (symbol_id) REFERENCES symbols (symbol_id),
     UNIQUE (symbol_id, timeframe, timestamp)
 );
 """
 
 CREATE_TECHNICAL_INDICATORS_TABLE = """
 CREATE TABLE IF NOT EXISTS technical_indicators (
-    indicator_id SERIAL PRIMARY KEY,
+    indicator_id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol_id INTEGER,
     timeframe TEXT NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
+    timestamp DATETIME,
     indicator_name TEXT NOT NULL,
     indicator_value REAL,
-    FOREIGN KEY (symbol_id) REFERENCES symbols (symbol_id) ON DELETE CASCADE,
+    FOREIGN KEY (symbol_id) REFERENCES symbols (symbol_id),
     UNIQUE (symbol_id, timeframe, timestamp, indicator_name)
 );
 """
 
-# SQL commands for TimescaleDB features (run separately)
-TIMESCALEDB_SETUP_OHLCV = """
-SELECT create_hypertable('ohlcv_data', 'timestamp');
-ALTER TABLE ohlcv_data SET (timescaledb.compress, timescaledb.compress_segmentby = 'symbol_id');
-SELECT add_compression_policy('ohlcv_data', INTERVAL '7 days');
-"""
-
-TIMESCALEDB_SETUP_TECH_INDICATORS = """
-SELECT create_hypertable('technical_indicators', 'timestamp');
-ALTER TABLE technical_indicators SET (timescaledb.compress, timescaledb.compress_segmentby = 'symbol_id');
-SELECT add_compression_policy('technical_indicators', INTERVAL '7 days');
-"""
-
 # Function to initialize the database
-def initialize_database(db_url=database_url):
-    # Connect to PostgreSQL database
-    conn = psycopg2.connect(db_url)
+def initialize_database(db_path=database_path):
+    # Connect to SQLite database
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-
+    
     # Execute schema definitions to create tables
     cursor.execute(CREATE_MARKET_TABLE)
     cursor.execute(CREATE_SYMBOLS_TABLE)
     cursor.execute(CREATE_OHLCV_DATA_TABLE)
     cursor.execute(CREATE_TECHNICAL_INDICATORS_TABLE)
-
-    # Commit table creation
+    
+    # Commit changes and close connection
     conn.commit()
-
-    # Execute TimescaleDB specific commands separately
-    cursor.execute(TIMESCALEDB_SETUP_OHLCV)
-    cursor.execute(TIMESCALEDB_SETUP_TECH_INDICATORS)
-
-    # Commit and close connection
-    conn.commit()
-    cursor.close()
     conn.close()
     print("Database initialized successfully with all required tables.")
 
