@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from utils.db.fetch import fetch_entries
-from utils.db.insert import insert_data
+from utils.db.insert import insert_data, add_column_if_not_exists
 from utils.calculation.indicators import calculate_ema
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path='config/.env')
 
-def process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs):
+def process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs, frequently_accessed):
     indicator_df = calculation_func(df, **calculation_kwargs)
-    insert_data(market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
+    insert_data(market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=not frequently_accessed, indicators_df=indicator_df, frequently_accessed=frequently_accessed)
 
-def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calculation_kwargs):
+def fetch_calculate_and_insert(market_name, timeframe, calculation_func, frequently_accessed=False, **calculation_kwargs):
     '''
     Runs the input calculate function across the given market & timeframe and inserts the result into database.
     Multi processes the calculation function for each symbol.
@@ -23,6 +23,7 @@ def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calcu
     market_name: str [Example : 'indian_equity']
     timeframe: str [Example : '1d']
     calculation_func: function [Example : calculate_ema]
+    frequently_accessed: bool [True if the indicator is frequently accessed]
     calculation_kwargs: dict [Example : length=50]
     '''
     ohlcv_data = fetch_entries(market_name=market_name, timeframe=timeframe, all_entries=True)
@@ -35,14 +36,14 @@ def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calcu
     if use_multiprocessing:
         with ProcessPoolExecutor() as executor:
             futures = [
-                executor.submit(process_symbol, symbol, df, market_name, timeframe, calculation_func, calculation_kwargs)
+                executor.submit(process_symbol, symbol, df, market_name, timeframe, calculation_func, calculation_kwargs, frequently_accessed)
                 for symbol, df in ohlcv_data.items()
             ]
             for _ in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Processing symbols"):
                 pass  # Wait for all futures to complete
     else:
         for symbol, df in tqdm(ohlcv_data.items(), desc="Processing symbols"):
-            process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs)
+            process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs, frequently_accessed)
 
     print(f"{calculation_func.__name__} calculation and insertion completed for market: {market_name} and timeframe: {timeframe}")
 

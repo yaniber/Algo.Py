@@ -67,7 +67,6 @@ CREATE TABLE IF NOT EXISTS symbols (
 
 CREATE_OHLCV_DATA_TABLE = """
 CREATE TABLE IF NOT EXISTS ohlcv_data (
-    ohlcv_id SERIAL PRIMARY KEY,
     symbol_id INTEGER,
     timeframe TEXT NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL,
@@ -83,7 +82,6 @@ CREATE TABLE IF NOT EXISTS ohlcv_data (
 
 CREATE_TECHNICAL_INDICATORS_TABLE = """
 CREATE TABLE IF NOT EXISTS technical_indicators (
-    indicator_id SERIAL PRIMARY KEY,
     symbol_id INTEGER,
     timeframe TEXT NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL,
@@ -96,14 +94,20 @@ CREATE TABLE IF NOT EXISTS technical_indicators (
 
 # SQL commands for TimescaleDB features (run separately)
 TIMESCALEDB_SETUP_OHLCV = """
-SELECT create_hypertable('ohlcv_data', 'timestamp');
-ALTER TABLE ohlcv_data SET (timescaledb.compress, timescaledb.compress_segmentby = 'symbol_id');
+SELECT create_hypertable('ohlcv_data', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);
+ALTER TABLE ohlcv_data SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'symbol_id, timeframe'
+);
 SELECT add_compression_policy('ohlcv_data', INTERVAL '7 days');
 """
 
 TIMESCALEDB_SETUP_TECH_INDICATORS = """
-SELECT create_hypertable('technical_indicators', 'timestamp');
-ALTER TABLE technical_indicators SET (timescaledb.compress, timescaledb.compress_segmentby = 'symbol_id');
+SELECT create_hypertable('technical_indicators', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);
+ALTER TABLE technical_indicators SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'symbol_id, timeframe'
+);
 SELECT add_compression_policy('technical_indicators', INTERVAL '7 days');
 """
 
