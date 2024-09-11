@@ -1,0 +1,13 @@
+version: '3'
+services:
+  app:
+    container_name: quantipy_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"  # Assuming your app runs on port 5000
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@timescaledb:5432/db
+    volumes:
+      - .:/app  # Mount the current directory to /app in the container

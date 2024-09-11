@@ -1,6 +1,8 @@
 from data.fetch.indian_equity import fetch_ohlcv_indian_equity, fetch_symbol_list_indian_equity
 from tqdm import tqdm
+from utils.decorators import cache_decorator
 
+@cache_decorator()
 def gather_ohlcv_indian_equity(timeframe='1d', start_date=None, complete_list=False):
     '''
     Gathers OHLCV data from Binance for all symbols that match the given type and suffix.
