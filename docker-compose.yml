@@ -24,7 +24,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: db
     volumes:
-      - timescaledb_data:/var/lib/postgresql/data
+      - timescaledb_data:/home/postgres/pgdata/data
     restart: always  # Automatically restart the container if stopped
 
   pgadmin:

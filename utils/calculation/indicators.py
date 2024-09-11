@@ -35,7 +35,7 @@ def calculate_rsi(df, length):
     rsi = df.ta.rsi(length=length)
     return rsi
 
-@result_df_decorator(lambda length, atr_multiplier: f'supertrend_{length}_{atr_multiplier}')
+@result_df_decorator(lambda length, atr_multiplier: f'supertrend_{length}_{str(atr_multiplier).replace(".", "_")}')
 def calculate_supertrend(df, atr_multiplier=3.0, length=10):
     """
     Calculate Supertrend for a given dataframe using ta library.
@@ -95,7 +95,7 @@ def calculate_exponential_regression(df, window=90):
     _slope_r2_product = data[f'Slope_{window}'] * data[f'R2_{window}']
     return _slope_r2_product
 
-@result_df_decorator(lambda lookback_period, spike_threshold: f'spike_{lookback_period}_{spike_threshold}')
+@result_df_decorator(lambda lookback_period, spike_threshold: f'spike_{lookback_period}_{str(spike_threshold).replace(".", "_")}')
 def calculate_spike(df, lookback_period, spike_threshold=0.5):
     """
     Calculate if there has been a spike of `spike_threshold` or more in the last `lookback_period`.
@@ -117,7 +117,7 @@ def calculate_spike(df, lookback_period, spike_threshold=0.5):
             spikes.iloc[i] = 1
     return spikes
 
-@result_df_decorator(lambda lookback_period, gap_threshold: f'gap_{lookback_period}_{gap_threshold}')
+@result_df_decorator(lambda lookback_period, gap_threshold: f'gap_{lookback_period}_{str(gap_threshold).replace(".", "_")}')
 def detect_large_gap(df, lookback_period=90, gap_threshold=0.15):
     """
     Detect if there has been a gap up or gap down greater than the specified threshold

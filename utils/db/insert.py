@@ -3,6 +3,7 @@ import psycopg2
 import pandas as pd
 from dotenv import load_dotenv
 from utils.db.update import add_column_if_not_exists
+from utils.decorators import cache_decorator
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path='config/.env')
@@ -19,6 +20,7 @@ def get_db_connection():
         print(f"Error connecting to database: {e}")
         return None
 
+@cache_decorator(expire=24600)
 def insert_market_if_not_exists(conn, market_name):
     """Insert a market into the market table if it does not exist, and return the market_id."""
     cursor = conn.cursor()
@@ -34,6 +36,7 @@ def insert_market_if_not_exists(conn, market_name):
     market_id = cursor.fetchone()[0]
     return market_id
 
+@cache_decorator(expire=24600)
 def insert_symbol_if_not_exists(conn, symbol_name, market_id):
     """Insert a symbol into the symbols table if it does not exist, and return the symbol_id."""
     cursor = conn.cursor()
@@ -77,8 +80,8 @@ def insert_ohlcv_data(conn, symbol_id, timeframe, df):
     """, values)
     conn.commit()
 
-def insert_technical_indicators(conn, symbol_id, timeframe, df):
-    """Insert technical indicators into the technical_indicators table."""
+def insert_infrequently_accessed_indicators(conn, symbol_id, timeframe, df):
+    """Insert infrequently accessed indicators into the technical_indicators table."""
     cursor = conn.cursor()
 
     # Prepare data for insertion
@@ -91,6 +94,50 @@ def insert_technical_indicators(conn, symbol_id, timeframe, df):
         ON CONFLICT (symbol_id, timeframe, timestamp, indicator_name) DO NOTHING;
     """, [(symbol_id, timeframe, record['timestamp'], record['indicator_name'], float(record['indicator_value'])) for record in indicator_records_list])
     
+    conn.commit()
+
+def insert_frequently_accessed_indicator(conn, symbol_id, timeframe, df):
+    """Insert frequently accessed indicators into the ohlcv_data table."""
+    cursor = conn.cursor()
+
+    # Prepare data for insertion
+    indicator_records = df.to_records(index=False)  # Convert DataFrame to records for PostgreSQL insertion
+    indicator_records_list = list(indicator_records)
+
+    # Dynamically generate the column names and values
+    columns = ['symbol_id', 'timeframe', 'timestamp', df.columns[1]]
+    values = [(symbol_id, timeframe, record['timestamp'], float(record[df.columns[1]])) for record in indicator_records_list]
+
+    # Ensure the column exists in the table
+    add_column_if_not_exists('ohlcv_data', df.columns[1], 'REAL')
+
+    # Create a unique temporary table name
+    temp_table_name = f"temp_ohlcv_data_{os.getpid()}"
+
+    # Create a temporary table
+    cursor.execute(f"""
+        CREATE TEMP TABLE {temp_table_name} (
+            symbol_id INT,
+            timeframe TEXT,
+            timestamp TIMESTAMP,
+            {df.columns[1]} REAL
+        ) ON COMMIT DROP;
+    """)
+
+    # Insert data into the temporary table
+    cursor.executemany(f"""
+        INSERT INTO {temp_table_name} ({', '.join(columns)})
+        VALUES ({', '.join(['%s'] * len(columns))});
+    """, values)
+
+    # Upsert from the temporary table to the main table
+    cursor.execute(f"""
+        INSERT INTO ohlcv_data ({', '.join(columns)})
+        SELECT {', '.join(columns)} FROM {temp_table_name}
+        ON CONFLICT (symbol_id, timeframe, timestamp) DO UPDATE
+        SET {df.columns[1]} = EXCLUDED.{df.columns[1]};
+    """)
+
     conn.commit()
 
 def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indicators_df=None, frequently_accessed=False):
@@ -117,13 +164,11 @@ def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indic
         # Ensure symbol exists and get symbol_id
         symbol_id = insert_symbol_if_not_exists(conn, symbol_name, market_id)
         
-        if frequently_accessed:
-            for col in indicators_df.columns:
-                if col not in ['timestamp']:
-                    add_column_if_not_exists('ohlcv_data', col, 'REAL')
-            insert_ohlcv_data(conn, symbol_id, timeframe, indicators_df)
-        elif indicators:
-            insert_technical_indicators(conn, symbol_id, timeframe, indicators_df)
+        if indicators:
+            if frequently_accessed:
+                insert_frequently_accessed_indicator(conn, symbol_id, timeframe, indicators_df)
+            else:
+                insert_infrequently_accessed_indicators(conn, symbol_id, timeframe, indicators_df)
         else:
             # Insert OHLCV data for the symbol
             insert_ohlcv_data(conn, symbol_id, timeframe, df)

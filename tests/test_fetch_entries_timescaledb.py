@@ -12,4 +12,3 @@ def test_fetch_entries():
     #print(result)
     assert isinstance(result, dict)
     assert all(isinstance(df, pd.DataFrame) for df in result.values())
-

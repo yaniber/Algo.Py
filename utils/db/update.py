@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+from utils.decorators import cache_decorator
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path='config/.env')
@@ -17,6 +18,7 @@ def get_db_connection():
         print(f"Error connecting to database: {e}")
         return None
 
+@cache_decorator()
 def add_column_if_not_exists(table_name, column_name, column_type):
     """Add a column to a table if it does not already exist."""
     conn = get_db_connection()

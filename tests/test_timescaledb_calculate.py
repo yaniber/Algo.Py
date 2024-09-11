@@ -43,3 +43,37 @@ def test_insert_frequently_accessed_indicator(db_connection):
     cursor.execute("DELETE FROM market WHERE market_name = %s;", (market_name,))
     db_connection.commit()
     cursor.close()
+
+def test_insert_frequently_accessed_indicator_column(db_connection):
+    # Create test data
+    market_name = "Test Market"
+    symbol_name = "TEST"
+    timeframe = "1d"
+    indicators_df = pd.DataFrame({
+        'timestamp': [1633046400000, 1633046460000],
+        'ema': [145.3, 145.4],  # Example frequently accessed indicator
+    })
+    indicators_df['timestamp'] = pd.to_datetime(indicators_df['timestamp'], unit='ms')
+    indicators_df['timestamp'] = indicators_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Insert data
+    insert_data(market_name, symbol_name, timeframe, df=None, indicators=True, indicators_df=indicators_df, frequently_accessed=True)
+    
+    # Verify data insertion
+    cursor = db_connection.cursor()
+    cursor.execute("""
+        SELECT ema FROM ohlcv_data WHERE symbol_id = (
+            SELECT symbol_id FROM symbols WHERE symbol = %s
+        );
+    """, (symbol_name,))
+    rows = cursor.fetchall()
+    assert len(rows) == 2
+    assert rows[0][0] == 145.3
+    assert rows[1][0] == 145.4
+    
+    # Clean up
+    cursor.execute("DELETE FROM ohlcv_data WHERE symbol_id = (SELECT symbol_id FROM symbols WHERE symbol = %s);", (symbol_name,))
+    cursor.execute("DELETE FROM symbols WHERE symbol = %s;", (symbol_name,))
+    cursor.execute("DELETE FROM market WHERE market_name = %s;", (market_name,))
+    db_connection.commit()
+    cursor.close()

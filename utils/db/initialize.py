@@ -99,7 +99,7 @@ ALTER TABLE ohlcv_data SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'symbol_id, timeframe'
 );
-SELECT add_compression_policy('ohlcv_data', INTERVAL '7 days');
+SELECT add_compression_policy('ohlcv_data', INTERVAL '1 day');
 """
 
 TIMESCALEDB_SETUP_TECH_INDICATORS = """
@@ -108,7 +108,7 @@ ALTER TABLE technical_indicators SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'symbol_id, timeframe'
 );
-SELECT add_compression_policy('technical_indicators', INTERVAL '7 days');
+SELECT add_compression_policy('technical_indicators', INTERVAL '1 day');
 """
 
 # Function to initialize the database
