@@ -2,6 +2,7 @@ import os
 import sqlite3
 import pandas as pd
 from dotenv import load_dotenv
+from utils.decorators import cache_decorator
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path='config/.env')
@@ -18,6 +19,7 @@ def get_db_connection():
         print(f"Error connecting to database: {e}")
         return None
 
+@cache_decorator()
 def insert_market_if_not_exists(conn, market_name):
     """Insert a market into the market table if it does not exist, and return the market_id."""
     cursor = conn.cursor()
@@ -32,6 +34,7 @@ def insert_market_if_not_exists(conn, market_name):
     market_id = cursor.fetchone()[0]
     return market_id
 
+@cache_decorator()
 def insert_symbol_if_not_exists(conn, symbol_name, market_id):
     """Insert a symbol into the symbols table if it does not exist, and return the symbol_id."""
     cursor = conn.cursor()

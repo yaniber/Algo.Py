@@ -7,7 +7,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5000:5000"  # Assuming your app runs on port 5000
-    environment:
-      - DATABASE_URL=postgresql://postgres:admin@timescaledb:5432/db
+    env_file:
+      - config/.env  # Load environment variables from the .env file
     volumes:
       - .:/app  # Mount the current directory to /app in the container
+      - sqlite_data:/app/database/db  # Mount the volume for SQLite database
+
+volumes:
+  sqlite_data:
