@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from utils.db.fetch import fetch_entries
-from utils.db.insert import insert_data
+from utils.db.insert import insert_data, get_db_connection
 from utils.calculation.indicators import calculate_ema
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
@@ -11,8 +11,31 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path='config/.env')
 
 def process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs):
-    indicator_df = calculation_func(df, **calculation_kwargs)
-    insert_data(market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
+    """
+    This function processes data for each symbol and inserts it into the database.
+    It is designed to be run in parallel (multiprocessing).
+    
+    Args:
+    symbol (str): Symbol name.
+    df (pd.DataFrame): OHLCV data DataFrame.
+    market_name (str): Market name.
+    timeframe (str): Timeframe (e.g., '1d', '1h').
+    calculation_func (callable): Function to calculate indicators.
+    calculation_kwargs (dict): Keyword arguments for the indicator calculation function.
+    """
+    # Get a database connection for this process
+    conn = get_db_connection()
+
+    try:
+        # Perform indicator calculations
+        indicator_df = calculation_func(df, **calculation_kwargs)
+        
+        # Insert the data into the database
+        insert_data(conn, market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
+    
+    finally:
+        # Close the connection when done
+        conn.close()
 
 def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calculation_kwargs):
     '''

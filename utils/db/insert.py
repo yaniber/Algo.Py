@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from dotenv import load_dotenv
 from utils.decorators import cache_decorator
+import time
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path='config/.env')
@@ -14,6 +15,10 @@ def get_db_connection():
     """Establish a connection to the SQLite database."""
     try:
         conn = sqlite3.connect(DATABASE_PATH)
+        conn.execute('PRAGMA journal_mode=WAL;')  # Enable WAL mode
+        conn.execute('PRAGMA synchronous=NORMAL;')  # Improve performance, but ensure data safety
+        conn.execute('PRAGMA locking_mode=EXCLUSIVE;')  # Try to avoid lock contention
+        conn.execute('PRAGMA busy_timeout = 3000;')  # Wait 3 seconds before failing
         return conn
     except sqlite3.Error as e:
         print(f"Error connecting to database: {e}")
@@ -91,29 +96,41 @@ def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indic
     indicators_df: pd.DataFrame of format: timestamp, indicator_name, indicator_value
     
     """
-    conn = get_db_connection()
-    if not conn:
-        return
-    
-    try:
-        # Ensure market exists and get market_id
-        market_id = insert_market_if_not_exists(conn, market_name)
+    retries = 5
+    while retries > 0:
+        conn = get_db_connection()
+        if not conn:
+            return
         
-        # Ensure symbol exists and get symbol_id
-        symbol_id = insert_symbol_if_not_exists(conn, symbol_name, market_id)
-        
-        # Insert technical indicators for the symbol
-        if indicators:
-            insert_technical_indicators(conn, symbol_id, timeframe, indicators_df)
-        else:
-            # Insert OHLCV data for the symbol
-            insert_ohlcv_data(conn, symbol_id, timeframe, df)
-        
-        print(f"Data for {symbol_name} in {market_name} inserted successfully.")
-    except Exception as e:
-        print(f"Error inserting data: {e}")
-    finally:
-        conn.close()
+        try:
+            # Ensure market exists and get market_id
+            market_id = insert_market_if_not_exists(conn, market_name)
+            
+            # Ensure symbol exists and get symbol_id
+            symbol_id = insert_symbol_if_not_exists(conn, symbol_name, market_id)
+            
+            # Insert technical indicators for the symbol
+            if indicators:
+                insert_technical_indicators(conn, symbol_id, timeframe, indicators_df)
+            else:
+                # Insert OHLCV data for the symbol
+                insert_ohlcv_data(conn, symbol_id, timeframe, df)
+            
+            print(f"Data for {symbol_name} in {market_name} inserted successfully.")
+            break
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e):
+                print("Database is locked, retrying...")
+                retries -= 1
+                time.sleep(1)  # Wait for 1 second before retrying
+            else:
+                print(f"Error inserting data: {e}")
+                break
+        except Exception as e:
+            print(f"Error inserting data: {e}")
+            break
+        finally:
+            conn.close()
 
 if __name__ == "__main__":
     # Example usage

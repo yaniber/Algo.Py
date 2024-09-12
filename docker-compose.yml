@@ -11,7 +11,4 @@ services:
       - config/.env  # Load environment variables from the .env file
     volumes:
       - .:/app  # Mount the current directory to /app in the container
-      - sqlite_data:/app/database/db  # Mount the volume for SQLite database
-
-volumes:
-  sqlite_data:
+      - ./database/db:/app/database/db  # Mount the volume for SQLite database
