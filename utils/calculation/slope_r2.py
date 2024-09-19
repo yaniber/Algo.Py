@@ -29,10 +29,11 @@ def calculate_slope_r2(x, y):
 @njit
 def calculate_slope_r2_rolling(log_close, window):
     n = len(log_close)
-    slopes = np.empty(n)
-    r2_values = np.empty(n)
-    slopes[:] = np.nan
-    r2_values[:] = np.nan
+    slopes = np.zeros(n)
+    r2_values = np.zeros(n)
+    
+    if window <= 0 or n < window:
+        return slopes, r2_values
     
     for i in range(window - 1, n):
         y = log_close[i-window+1:i+1]

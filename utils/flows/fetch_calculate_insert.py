@@ -13,7 +13,7 @@ from utils.decorators import cache_decorator
 load_dotenv(dotenv_path='config/.env')
 database_path = os.getenv('DATABASE_PATH')
 
-@cache_decorator()
+
 def process_symbol(batch_inserter, symbol, df, market_name, timeframe, calculation_func, calculation_kwargs):
     """
     This function processes data for each symbol and inserts it into the database.
@@ -29,7 +29,11 @@ def process_symbol(batch_inserter, symbol, df, market_name, timeframe, calculati
     """
     
     # Perform indicator calculations
-    indicator_df = calculation_func(df, **calculation_kwargs) 
+    try:
+        indicator_df = calculation_func(df, **calculation_kwargs) 
+    except Exception as e:
+        print(f"Error calculating {calculation_func.__name__}: {e}")
+        return
     # Insert the data into the database
     insert_data(batch_inserter, market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
 
