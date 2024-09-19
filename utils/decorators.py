@@ -24,6 +24,15 @@ def result_df_decorator(indicator_name_func):
     return decorator
 
 def cache_decorator(expire=86400):  # Default expiration is 1 day
+    """
+    Cache decorator for caching the function output based on function's input parameters.
+    Cache key is created using a hash of all an input params. 
+    Only pickleable input params are considered as part of the cache key -> only rely on caching based on pickleable input params. 
+
+    Input : 
+    expire : int (seconds till expiry) : default is 1 day. 
+
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

@@ -54,36 +54,16 @@ def insert_symbol_if_not_exists(conn, symbol_name, market_id):
     symbol_id = cursor.fetchone()[0]
     return symbol_id
 
-def insert_ohlcv_data(conn, symbol_id, timeframe, df):
+def insert_ohlcv_data(batch_inserter, symbol_id, timeframe, df):
     """Insert OHLCV data into the ohlcv_data table."""
-    cursor = conn.cursor()
+    batch_inserter.enqueue_ohlcv_dataframe(symbol_id, timeframe, df)
 
-    # Prepare data for insertion
-    ohlcv_records = df.to_records(index=False)  # Convert DataFrame to records for SQLite insertion
-    ohlcv_records_list = list(ohlcv_records)
+def insert_technical_indicators(batch_inserter, symbol_id, timeframe, df):
+    """Insert technical indicators into the batch inserter."""
+    # Use enqueue_dataframe for batch insertion
+    batch_inserter.enqueue_dataframe(symbol_id, timeframe, df)
 
-    cursor.executemany("""
-        INSERT OR IGNORE INTO ohlcv_data (symbol_id, timeframe, timestamp, open, high, low, close, volume)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    """, [(symbol_id, timeframe, record['timestamp'], float(record['open']), float(record['high']), float(record['low']), float(record['close']), float(record['volume'])) for record in ohlcv_records_list])  # Ensure all data is in float
-    conn.commit()
-
-def insert_technical_indicators(conn, symbol_id, timeframe, df):
-    """Insert technical indicators into the technical_indicators table."""
-    cursor = conn.cursor()
-
-    # Prepare data for insertion
-    indicator_records = df.to_records(index=False)  # Convert DataFrame to records for SQLite insertion
-    indicator_records_list = list(indicator_records)
-
-    cursor.executemany("""
-        INSERT OR REPLACE INTO technical_indicators (symbol_id, timeframe, timestamp, indicator_name, indicator_value)
-        VALUES (?, ?, ?, ?, ?);
-    """, [(symbol_id, timeframe, record['timestamp'], record['indicator_name'], float(record['indicator_value'])) for record in indicator_records_list])
-    
-    conn.commit()
-
-def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indicators_df=None):
+def insert_data(batch_inserter=None, market_name=None, symbol_name=None, timeframe=None, df=None, indicators=False, indicators_df=None):
     """
     Main function to insert data into the database.
     
@@ -98,7 +78,8 @@ def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indic
     """
     retries = 5
     while retries > 0:
-        conn = get_db_connection()
+        #conn = get_db_connection() -> removed due to database locking issues , borrowing from batch_inserter instead.
+        conn = batch_inserter.conn
         if not conn:
             return
         
@@ -111,10 +92,10 @@ def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indic
             
             # Insert technical indicators for the symbol
             if indicators:
-                insert_technical_indicators(conn, symbol_id, timeframe, indicators_df)
+                insert_technical_indicators(batch_inserter, symbol_id, timeframe, indicators_df)
             else:
                 # Insert OHLCV data for the symbol
-                insert_ohlcv_data(conn, symbol_id, timeframe, df)
+                insert_ohlcv_data(batch_inserter, symbol_id, timeframe, df)
             
             print(f"Data for {symbol_name} in {market_name} inserted successfully.")
             break
@@ -130,7 +111,8 @@ def insert_data(market_name, symbol_name, timeframe, df, indicators=False, indic
             print(f"Error inserting data: {e}")
             break
         finally:
-            conn.close()
+            #conn.close() -> removed due to database locking issues.
+            return
 
 if __name__ == "__main__":
     # Example usage

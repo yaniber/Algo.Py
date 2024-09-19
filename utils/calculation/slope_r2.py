@@ -12,7 +12,11 @@ def calculate_slope_r2(x, y):
     sum_xy = np.sum(x * y)
     sum_xx = np.sum(x * x)
     
-    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
+    denominator = (n * sum_xx - sum_x * sum_x)
+    if denominator == 0 or n==0:
+        return np.nan, np.nan  # Return NaN if division by zero would occur
+    
+    slope = (n * sum_xy - sum_x * sum_y) / denominator
     intercept = (sum_y - slope * sum_x) / n
     
     y_pred = slope * x + intercept

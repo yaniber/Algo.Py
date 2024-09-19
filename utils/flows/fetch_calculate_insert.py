@@ -7,10 +7,14 @@ from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import concurrent.futures
 from dotenv import load_dotenv
+from utils.db.batch import BatchInserter
+from utils.decorators import cache_decorator
 
 load_dotenv(dotenv_path='config/.env')
+database_path = os.getenv('DATABASE_PATH')
 
-def process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs):
+@cache_decorator()
+def process_symbol(batch_inserter, symbol, df, market_name, timeframe, calculation_func, calculation_kwargs):
     """
     This function processes data for each symbol and inserts it into the database.
     It is designed to be run in parallel (multiprocessing).
@@ -23,19 +27,11 @@ def process_symbol(symbol, df, market_name, timeframe, calculation_func, calcula
     calculation_func (callable): Function to calculate indicators.
     calculation_kwargs (dict): Keyword arguments for the indicator calculation function.
     """
-    # Get a database connection for this process
-    conn = get_db_connection()
-
-    try:
-        # Perform indicator calculations
-        indicator_df = calculation_func(df, **calculation_kwargs)
-        
-        # Insert the data into the database
-        insert_data(conn, market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
     
-    finally:
-        # Close the connection when done
-        conn.close()
+    # Perform indicator calculations
+    indicator_df = calculation_func(df, **calculation_kwargs) 
+    # Insert the data into the database
+    insert_data(batch_inserter, market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
 
 def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calculation_kwargs):
     '''
@@ -48,15 +44,17 @@ def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calcu
     calculation_func: function [Example : calculate_ema]
     calculation_kwargs: dict [Example : length=50]
     '''
-    ohlcv_data = fetch_entries(market_name=market_name, timeframe=timeframe, all_entries=True)
+    
+    batch_inserter = BatchInserter(database_path=database_path, table='technical_indicators')
+    ohlcv_data = fetch_entries(batch_inserter, market_name=market_name, timeframe=timeframe, all_entries=True)
     if not ohlcv_data:
         print(f"No OHLCV data found for market: {market_name} and timeframe: {timeframe}")
         return
 
     use_multiprocessing = os.getenv('USE_MULTIPROCESSING', 'True').lower() == 'true'
-
+    use_multiprocessing = False
     if use_multiprocessing:
-        with ProcessPoolExecutor() as executor:
+        with ProcessPoolExecutor(max_workers=6) as executor:
             futures = [
                 executor.submit(process_symbol, symbol, df, market_name, timeframe, calculation_func, calculation_kwargs)
                 for symbol, df in ohlcv_data.items()
@@ -65,7 +63,8 @@ def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calcu
                 pass  # Wait for all futures to complete
     else:
         for symbol, df in tqdm(ohlcv_data.items(), desc="Processing symbols"):
-            process_symbol(symbol, df, market_name, timeframe, calculation_func, calculation_kwargs)
+            process_symbol(batch_inserter, symbol, df, market_name, timeframe, calculation_func, calculation_kwargs)
+        batch_inserter.stop()
 
     print(f"{calculation_func.__name__} calculation and insertion completed for market: {market_name} and timeframe: {timeframe}")
 

@@ -1,0 +1,32 @@
+version: '3'
+services:
+  app:
+    container_name: quantipy_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"  # Assuming your app runs on port 5000
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@timescaledb:5432/db
+    volumes:
+      - .:/app  # Mount the current directory to /app in the container
+    depends_on:
+      - timescaledb
+
+  timescaledb:
+    image: timescale/timescaledb-ha:pg16
+    container_name: timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: postgres
+      POSTGRES_DB: db
+    volumes:
+      - timescaledb_data:/home/postgres/pgdata/data
+    restart: always  # Automatically restart the container if stopped
+
+volumes:
+  timescaledb_data:
+    driver: local  # Persist TimescaleDB data

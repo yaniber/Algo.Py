@@ -1,4 +1,5 @@
-from vectorbtpro import vbt, njit
+from vectorbtpro import vbt
+from numba import njit
 import numpy as np
 from utils.db.fetch import fetch_entries
 import os
@@ -7,15 +8,6 @@ import pandas as pd
 
 def get_med_price(high, low):
     return (high + low) / 2
-
-def get_atr_np(high, low, close, period):
-    shifted_close = vbt.nb.fshift_1d_nb(close)
-    tr0 = np.abs(high - low)
-    tr1 = np.abs(high - shifted_close)
-    tr2 = np.abs(low - shifted_close)
-    tr = np.column_stack((tr0, tr1, tr2)).max(axis=1)
-    atr = vbt.nb.wwm_mean_1d_nb(tr, period)
-    return atr
 
 def get_atr_np(high, low, close, period):
     shifted_close = vbt.nb.fshift_1d_nb(close)

@@ -4,7 +4,7 @@ import time
 from utils.decorators import cache_decorator
 
 @cache_decorator()
-def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entries=False):
+def fetch_entries(batch_inserter, market_name=None, timeframe=None, symbol_list=None, all_entries=False):
     '''
     Fetches OHLCV data and technical indicators from the database.
     
@@ -19,7 +19,8 @@ def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entrie
     {symbol: pd.DataFrame}
     '''
 
-    conn = get_db_connection()
+    #conn = get_db_connection() -> removed due to db locking
+    conn = batch_inserter.conn
     if not conn:
         return None
 
@@ -67,7 +68,7 @@ def fetch_entries(market_name=None, timeframe=None, symbol_list=None, all_entrie
         df_pivot = df.pivot_table(index=['timestamp', 'open', 'high', 'low', 'close', 'volume'], columns='indicator_name', values='indicator_value', fill_value=0).reset_index()
         result[symbol] = df_pivot
 
-    conn.close()
+    #conn.close() -> removed due to db locking
 
     # or Store result in cache with expiration time
     #cache.set(cache_key, result, expire=cache_period(timeframe))

@@ -7,13 +7,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.store.crypto_binance import store_crypto_binance
 from data.store.indian_equity import store_indian_equity
 from utils.decorators import clear_cache # Import clear_cache function
+from utils.db.initialize import initialize_database
 
 if __name__ == '__main__':
     # Ask user for input
     print("Please choose the data type to save:")
     print("1. crypto-binance")
     print("2. equity-india")
-    print("3. clear cache")
+    print("3. Initialize database")
+    print("4. clear cache")
     data_type_choice = input("Enter the number corresponding to your choice: ")
 
     if data_type_choice == '1':
@@ -25,6 +27,9 @@ if __name__ == '__main__':
         complete_list_input = input("Fetch complete list? (y/n): ")
         complete_list = complete_list_input.lower() == 'y'
     elif data_type_choice == '3':
+        initialize_database()
+        sys.exit(0)
+    elif data_type_choice == '4':
         clear_cache()  # Clear the cache
         print("Cache cleared successfully.")
         sys.exit(0)
