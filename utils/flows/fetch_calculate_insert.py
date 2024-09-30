@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from utils.db.fetch import fetch_entries
+from utils.db.fetch import fetch_entries, fetch_ohlcv_data
 from utils.db.insert import insert_data, get_db_connection
 from utils.calculation.indicators import calculate_ema
 from concurrent.futures import ProcessPoolExecutor
@@ -37,7 +37,7 @@ def process_symbol(batch_inserter, symbol, df, market_name, timeframe, calculati
     # Insert the data into the database
     insert_data(batch_inserter, market_name=market_name, symbol_name=symbol, timeframe=timeframe, df=indicator_df, indicators=True, indicators_df=indicator_df)
 
-def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calculation_kwargs):
+def fetch_calculate_and_insert(market_name, timeframe, start_timestamp, all_entries, symbol_list, calculation_func, **calculation_kwargs):
     '''
     Runs the input calculate function across the given market & timeframe and inserts the result into database.
     Multi processes the calculation function for each symbol.
@@ -50,7 +50,8 @@ def fetch_calculate_and_insert(market_name, timeframe, calculation_func, **calcu
     '''
     
     batch_inserter = BatchInserter(database_path=database_path, table='technical_indicators')
-    ohlcv_data = fetch_entries(batch_inserter, market_name=market_name, timeframe=timeframe, all_entries=True)
+    #ohlcv_data = fetch_entries(batch_inserter, market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=True)
+    ohlcv_data = fetch_ohlcv_data(batch_inserter=batch_inserter, market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, symbol_list=symbol_list, all_entries=all_entries)
     if not ohlcv_data:
         print(f"No OHLCV data found for market: {market_name} and timeframe: {timeframe}")
         return

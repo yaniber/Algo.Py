@@ -27,3 +27,17 @@ def store_indian_equity(timeframe='1y', data_points_back=1, complete_list=False)
             print(f"Error storing {symbol}: {e}")
             continue
     batch_inserter.stop()
+
+def store_indian_equity_gaps(symbols, data, timeframe):
+    batch_inserter = BatchInserter(database_path=database_path, table='ohlcv_data')
+
+    for symbol in tqdm(symbols):
+        try:
+            insert_data(batch_inserter=batch_inserter, market_name='indian_equity', symbol_name=symbol, timeframe=timeframe, df=data[symbol])
+        except Exception as e:
+            print(f"Error storing {symbol}: {e}")
+            continue
+    batch_inserter.stop()
+
+if __name__ == "__main__":
+    store_indian_equity(timeframe='1y', data_points_back=10, complete_list=False)

@@ -16,7 +16,11 @@ class BatchInserter:
         self.start_time = time.time()
         self.database_path = database_path
         self.table = table
-        self.conn = self._get_new_connection()
+        self.lock = threading.Lock()
+        self.queue = Queue()
+        self.stop_event = threading.Event()
+        self.worker_thread = threading.Thread(target=self._process_queue)
+        self.worker_thread.start()
 
     def _get_new_connection(self):
         """Get a new database connection with retry mechanism."""
@@ -43,36 +47,37 @@ class BatchInserter:
                     raise
         raise sqlite3.OperationalError("Max retries exceeded: database is locked")
 
-    def _insert_batch(self, batch, table):
+    def _insert_batch(self, batch, table, conn):
         """Insert a batch of records into the database with retry logic."""
         retries = 0
         while retries < MAX_RETRIES:
             try:
                 _start_time = time.time()
-                cursor = self.conn.cursor()
-                if table == 'technical_indicators':
-                    cursor.executemany("""
-                        INSERT OR IGNORE INTO technical_indicators (symbol_id, timeframe, timestamp, indicator_name, indicator_value)
-                        VALUES (?, ?, ?, ?, ?);
-                    """, batch)
-                elif table == 'ohlcv_data':
-                    cursor.executemany("""
-                        INSERT OR IGNORE INTO ohlcv_data (symbol_id, timeframe, timestamp, open, high, low, close, volume)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-                    """, batch)
-                self.conn.commit()
+                with self.lock:
+                    cursor = conn.cursor()
+                    if table == 'technical_indicators':
+                        cursor.executemany("""
+                            INSERT OR REPLACE INTO technical_indicators (symbol_id, timeframe, timestamp, indicator_name, indicator_value)
+                            VALUES (?, ?, ?, ?, ?);
+                        """, batch)
+                    elif table == 'ohlcv_data':
+                        cursor.executemany("""
+                            INSERT OR IGNORE INTO ohlcv_data (symbol_id, timeframe, timestamp, open, high, low, close, volume)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                        """, batch)
+                    conn.commit()
                 _end_time = time.time()
                 self.total_inserted_rows += len(batch)
-                #print(f"Inserted {len(batch)} rows in {_end_time - _start_time:.2f} seconds")
+                print(f"Inserted {len(batch)} rows in {_end_time - _start_time:.2f} seconds")
 
                 if self.total_inserted_rows % 100000 == 0:
                     elapsed_time = time.time() - self.start_time
-                    #print(f"Inserted {self.total_inserted_rows} rows in {elapsed_time:.2f} seconds")
+                    print(f"Inserted {self.total_inserted_rows} rows in {elapsed_time:.2f} seconds")
                     self.start_time = time.time()
 
                 return  # If successful, break out of the retry loop
 
-            except Exception as e:
+            except sqlite3.OperationalError as e:
                 if "database is locked" in str(e):
                     retries += 1
                     print(f"Database is locked, retrying {retries}/{MAX_RETRIES}...")
@@ -81,8 +86,22 @@ class BatchInserter:
                     raise e  # Re-raise non-lock related errors
 
         print("Max retries reached. Refreshing connection.")
-        self.conn.close()
-        self.conn = self._get_new_connection()
+        with self.lock:
+            conn.close()
+            conn = self._get_new_connection()
+
+    def _process_queue(self):
+        """Background thread to process the queue."""
+        print('------- Starting Thread ----------')
+        conn = self._get_new_connection()  # Create a new connection for this thread
+        while not (self.stop_event.is_set() and self.queue.empty()):
+            try:
+                batch = self.queue.get(timeout=1)
+                self._insert_batch(batch, self.table, conn)  # Pass the connection to the insert method
+                self.queue.task_done()
+            except Empty:
+                continue
+        conn.close()  # Close the connection when done
 
     def enqueue_record(self, symbol_id, timeframe, record):
         """Add record to current batch, and insert batch if batch size is reached."""
@@ -111,11 +130,11 @@ class BatchInserter:
             self.current_batch.extend(batch_entries)
 
             if len(self.current_batch) >= BATCH_SIZE:
-                self._insert_batch(self.current_batch, self.table)
+                self.queue.put(self.current_batch)
                 self.current_batch = []
 
         if self.current_batch:
-            self._insert_batch(self.current_batch, self.table)
+            self.queue.put(self.current_batch)
             self.current_batch = []
 
     def enqueue_ohlcv_dataframe(self, symbol_id, timeframe, df):
@@ -134,15 +153,28 @@ class BatchInserter:
             self.current_batch.extend(batch_entries)
 
             if len(self.current_batch) >= BATCH_SIZE:
-                self._insert_batch(self.current_batch, self.table)
+                self.queue.put(self.current_batch)
                 self.current_batch = []
 
         if self.current_batch:
-            self._insert_batch(self.current_batch, self.table)
+            self.queue.put(self.current_batch)
             self.current_batch = []
 
+    def get_connection(self):
+        """Provide a thread-safe way to access the connection."""
+        self.lock.acquire()
+        return self.conn
+
+    def release_connection(self):
+        """Release the lock after using the connection."""
+        self.lock.release()
+    
     def stop(self):
         """Insert any remaining records and close connection."""
+        print("------------ About to stop this thread.-------------")
         if self.current_batch:
-            self._insert_batch(self.current_batch, self.table)
-        self.conn.close()
+            self.queue.put(self.current_batch)
+        self.stop_event.set()
+        self.worker_thread.join()        
+        with self.lock:
+            self.conn.close()

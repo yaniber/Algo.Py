@@ -42,7 +42,7 @@ def cache_decorator(expire=86400):  # Default expiration is 1 day
             filtered_kwargs = {k: v for k, v in kwargs.items() if is_pickleable(v)}
 
             # Create a unique cache key based on function name and filtered arguments
-            cache_key = hashlib.md5(pickle.dumps((func.__name__, filtered_args, filtered_kwargs))).hexdigest()
+            cache_key = generate_cache_key(func.__name__, filtered_args, filtered_kwargs)
 
             # Check if result is in cache
             if cache_key in cache:
@@ -57,6 +57,31 @@ def cache_decorator(expire=86400):  # Default expiration is 1 day
         return wrapper
     return decorator
 
+def generate_cache_key(func_name, args, kwargs):
+    """
+    Generate a unique cache key based on function name and arguments.
+    """
+    return hashlib.md5(pickle.dumps((func_name, args, kwargs))).hexdigest()
+
+def clear_specific_cache(func_name, *args, **kwargs):
+    """
+    Clear cache for specific function and arguments.
+    """
+    filtered_args = tuple(arg for arg in args if is_pickleable(arg))
+    filtered_kwargs = {k: v for k, v in kwargs.items() if is_pickleable(v)}
+    cache_key = generate_cache_key(func_name, filtered_args, filtered_kwargs)
+    if cache_key in cache:
+        del cache[cache_key]
+
+def update_cache(func_name, result, expire, *args, **kwargs):
+    """
+    Update cache for specific function and arguments.
+    """
+    filtered_args = tuple(arg for arg in args if is_pickleable(arg))
+    filtered_kwargs = {k: v for k, v in kwargs.items() if is_pickleable(v)}
+    cache_key = generate_cache_key(func_name, filtered_args, filtered_kwargs)
+    cache.set(cache_key, result, expire=expire)
+
 def cache_period(timeframe):
     if timeframe == '1d':
         return 86400  # 1 day in seconds
@@ -68,11 +93,11 @@ def cache_period(timeframe):
         return 86400  # Default to 1 day
 
 def is_pickleable(obj):
-                try:
-                    pickle.dumps(obj)
-                    return True
-                except (pickle.PicklingError, TypeError):
-                    return False
+    try:
+        pickle.dumps(obj)
+        return True
+    except (pickle.PicklingError, TypeError):
+        return False
 
 def clear_cache():
     """

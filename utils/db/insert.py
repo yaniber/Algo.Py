@@ -97,9 +97,9 @@ def insert_data(batch_inserter=None, market_name=None, symbol_name=None, timefra
                 # Insert OHLCV data for the symbol
                 insert_ohlcv_data(batch_inserter, symbol_id, timeframe, df)
             
-            print(f"Data for {symbol_name} in {market_name} inserted successfully.")
+            #print(f"Data for {symbol_name} in {market_name} inserted successfully.")
             break
-        except sqlite3.OperationalError as e:
+        except Exception as e:
             if "database is locked" in str(e):
                 print("Database is locked, retrying...")
                 retries -= 1

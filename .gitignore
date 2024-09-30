@@ -6,5 +6,6 @@ strategy/private/*
 .pytest_cache/
 database/db/*
 BTengine/*
+documentation/*
 *.db*
 to-do.txt

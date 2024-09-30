@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import yfinance as yf
 from nsepython import nsefetch, nse_eq_symbols
 from datetime import datetime, timedelta
+from utils.decorators import cache_decorator
 
 
 def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.now()):
@@ -26,18 +27,19 @@ def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.n
         print('msg=%s, symbol=%s, error=%s', 'Error fetching data for symbol', symbol, str(e))
         return None
 
-def fetch_symbol_list_indian_equity(complete_list=False):
+@cache_decorator(expire=60*60*24*30)
+def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
     '''
     Fetches the list of all symbols from the NSE website if complete_list = True
     Otherwise fetches only the top 250 stocks.
+    index_name : 'all', 'nifty_50', 'nifty_midcap_100', 'nifty_smallcap_100'
     '''
     try:
         # Get stock lists from indices
         nifty_50_stocks = get_index_stocks_indian_equity('NIFTY 50')
         midcap_100_stocks = get_index_stocks_indian_equity('NIFTY MIDCAP 100')
         smallcap_100_stocks = get_index_stocks_indian_equity('NIFTY SMLCAP 100')
-
-        complete_symbols_list = nse_eq_symbols()
+        
 
         # Include the index symbols as well
         nifty_50 = ['^NSEI'] + nifty_50_stocks
@@ -48,7 +50,15 @@ def fetch_symbol_list_indian_equity(complete_list=False):
         all_symbols = nifty_50 + nifty_midcap_100 + nifty_smallcap_100
 
         if complete_list:
+            complete_symbols_list = nse_eq_symbols()
             all_symbols = all_symbols + complete_symbols_list
+
+        if index_name == 'nifty_50':
+            return list(set(nifty_50))
+        elif index_name == 'nifty_midcap_100':
+            return list(set(nifty_midcap_100))
+        elif index_name == 'nifty_smallcap_100':
+            return list(set(nifty_smallcap_100))
 
         # Remove any duplicates
         all_symbols = list(set(all_symbols))
