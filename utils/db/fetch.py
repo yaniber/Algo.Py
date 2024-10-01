@@ -4,17 +4,21 @@ import time
 from utils.decorators import cache_decorator
 from tqdm import tqdm
 
-def fetch_in_batches(cursor, query, params, batch_size):
-    offset = 0
+def fetch_in_batches(cursor, query, params, batch_size, last_id=None):
     with tqdm(desc="Fetching batches") as pbar:
         while True:
-            paginated_query = query + f" LIMIT {batch_size} OFFSET {offset}"
-            cursor.execute(paginated_query, params)
+            paginated_query = query
+            current_params = params.copy()  # Create a copy of the original params
+            if last_id is not None:
+                paginated_query += f" AND o.ohlcv_id > ?"
+                current_params.append(last_id)
+            paginated_query += f" ORDER BY o.ohlcv_id LIMIT {batch_size}"
+            cursor.execute(paginated_query, current_params)
             rows = cursor.fetchall()
             if not rows:
                 break
             yield rows
-            offset += batch_size
+            last_id = rows[-1][0]  # Assuming the first column is the unique ID
             pbar.update(len(rows))
 
 @cache_decorator(expire=60*60*24*30)
@@ -45,7 +49,7 @@ def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_
     cursor = conn.cursor()
 
     query = """
-    SELECT m.market_name, s.symbol, o.timeframe, o.timestamp, o.open, o.high, o.low, o.close, o.volume,
+    SELECT o.ohlcv_id, m.market_name, s.symbol, o.timeframe, o.timestamp, o.open, o.high, o.low, o.close, o.volume,
            ti.indicator_name, ti.indicator_value
     FROM ohlcv_data o
     JOIN symbols s ON o.symbol_id = s.symbol_id
@@ -74,10 +78,11 @@ def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_
 
     result = {}
 
-    for rows in fetch_in_batches(cursor, query, params, batch_size):
+    last_id = None
+    for rows in fetch_in_batches(cursor, query, params, batch_size, last_id):
         data = {}
         for row in rows:
-            market, symbol, timeframe, timestamp, open_, high, low, close, volume, indicator_name, indicator_value = row
+            id_, market, symbol, timeframe, timestamp, open_, high, low, close, volume, indicator_name, indicator_value = row
             if symbol not in data:
                 data[symbol] = []
             data[symbol].append([timestamp, open_, high, low, close, volume, indicator_name or 'None', indicator_value or 0])
@@ -93,9 +98,6 @@ def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_
 
     if not batch_inserter:
         conn.close()
-
-    # or Store result in cache with expiration time
-    #cache.set(cache_key, result, expire=cache_period(timeframe))
 
     return result
 
@@ -127,7 +129,7 @@ def fetch_ohlcv_data(batch_inserter=None, market_name=None, timeframe=None, symb
     cursor = conn.cursor()
 
     query = """
-    SELECT m.market_name, s.symbol, o.timeframe, o.timestamp, o.open, o.high, o.low, o.close, o.volume
+    SELECT o.ohlcv_id, m.market_name, s.symbol, o.timeframe, o.timestamp, o.open, o.high, o.low, o.close, o.volume
     FROM ohlcv_data o
     JOIN symbols s ON o.symbol_id = s.symbol_id
     JOIN market m ON s.market_id = m.market_id
@@ -154,10 +156,11 @@ def fetch_ohlcv_data(batch_inserter=None, market_name=None, timeframe=None, symb
 
     result = {}
 
-    for rows in fetch_in_batches(cursor, query, params, batch_size):
+    last_id = None
+    for rows in fetch_in_batches(cursor, query, params, batch_size, last_id):
         data = {}
         for row in rows:
-            market, symbol, timeframe, timestamp, open_, high, low, close, volume = row
+            id_, market, symbol, timeframe, timestamp, open_, high, low, close, volume = row
             if symbol not in data:
                 data[symbol] = []
             data[symbol].append([timestamp, open_, high, low, close, volume])
@@ -169,9 +172,6 @@ def fetch_ohlcv_data(batch_inserter=None, market_name=None, timeframe=None, symb
 
     if not batch_inserter:
         conn.close()
-
-    # or Store result in cache with expiration time
-    #cache.set(cache_key, result, expire=cache_period(timeframe))
 
     return result
 
