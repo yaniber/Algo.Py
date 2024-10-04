@@ -101,7 +101,7 @@ def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_
 
     return result
 
-#cache_decorator(expire=60*60*24*30)
+#@cache_decorator(expire=60*60*24*30)
 def fetch_ohlcv_data(batch_inserter=None, market_name=None, timeframe=None, symbol_list=None, all_entries=False, start_timestamp=None, batch_size=500000):
     '''
     Fetches OHLCV data and technical indicators from the database.
@@ -174,6 +174,50 @@ def fetch_ohlcv_data(batch_inserter=None, market_name=None, timeframe=None, symb
         conn.close()
 
     return result
+
+def fetch_ohlcv_data_for_symbol(symbol, market_name, timeframe, period=500):
+    '''
+    Fetch the last `period` OHLCV data points from the database for the given symbol and timeframe.
+
+    Args:
+    - symbol (str): The symbol to fetch data for.
+    - market_name (str): The market name (e.g., 'indian_equity').
+    - timeframe (str): The timeframe for the OHLCV data (e.g., '1d').
+    - period (int): The number of most recent data points to fetch (default: 500).
+
+    Returns:
+    - DataFrame: The OHLCV data for the given symbol.
+    '''
+    
+    query = f'''
+        SELECT o.timestamp, o.open, o.high, o.low, o.close, o.volume
+        FROM ohlcv_data o
+        JOIN symbols s ON o.symbol_id = s.symbol_id
+        JOIN market m ON s.market_id = m.market_id
+        WHERE s.symbol = ? AND m.market_name = ? AND o.timeframe = ?
+        ORDER BY o.timestamp DESC
+        LIMIT ?
+    '''
+    params = (symbol, market_name, timeframe, period)
+    
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        return None
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(rows, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    
+    # Sort data by timestamp ascending order
+    df = df.sort_values(by='timestamp')
+    return df
 
 def fetch_latest_date(market_name=None, timeframe=None):
     '''

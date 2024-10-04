@@ -32,22 +32,23 @@ def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
     '''
     Fetches the list of all symbols from the NSE website if complete_list = True
     Otherwise fetches only the top 250 stocks.
-    index_name : 'all', 'nifty_50', 'nifty_midcap_100', 'nifty_smallcap_100'
+    index_name : 'all', 'nifty_50', 'nifty_midcap_100', 'nifty_smallcap_100', 'nifty_500'
     '''
     try:
         # Get stock lists from indices
         nifty_50_stocks = get_index_stocks_indian_equity('NIFTY 50')
         midcap_100_stocks = get_index_stocks_indian_equity('NIFTY MIDCAP 100')
         smallcap_100_stocks = get_index_stocks_indian_equity('NIFTY SMLCAP 100')
-        
+        nifty_500_stocks = get_index_stocks_indian_equity('NIFTY 500')
 
         # Include the index symbols as well
         nifty_50 = ['^NSEI'] + nifty_50_stocks
         nifty_midcap_100 = ['^NSMIDCP'] + midcap_100_stocks
         nifty_smallcap_100 = ['^NSMCAP'] + smallcap_100_stocks
+        nifty_500 = ['^NSE500'] + nifty_500_stocks
 
         # Combine all symbols
-        all_symbols = nifty_50 + nifty_midcap_100 + nifty_smallcap_100
+        all_symbols = nifty_50 + nifty_midcap_100 + nifty_smallcap_100 + nifty_500
 
         if complete_list:
             complete_symbols_list = nse_eq_symbols()
@@ -59,6 +60,8 @@ def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
             return list(set(nifty_midcap_100))
         elif index_name == 'nifty_smallcap_100':
             return list(set(nifty_smallcap_100))
+        elif index_name == 'nifty_500':
+            return list(set(nifty_500))
 
         # Remove any duplicates
         all_symbols = list(set(all_symbols))
@@ -80,6 +83,8 @@ def get_index_stocks_indian_equity(index_name):
             stocks = nsefetch('https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%20MIDCAP%20100')['data']
         elif index_name == 'NIFTY SMLCAP 100':
             stocks = nsefetch('https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%20SMLCAP%20100')['data']
+        elif index_name == 'NIFTY 500':
+            stocks = nsefetch('https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%20500')['data']
         return [f"{stock['symbol']}.NS" for stock in stocks]
     except Exception as e:
         print('msg=%s, index_name=%s, error=%s', 'Error fetching index stocks', index_name, str(e))
