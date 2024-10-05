@@ -5,11 +5,16 @@ from dotenv import load_dotenv
 from utils.decorators import cache_decorator
 import time
 
+import sys 
+import os 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Load environment variables from .env file
 load_dotenv(dotenv_path='config/.env')
 
 # Database path from the .env file
 DATABASE_PATH = os.getenv('DATABASE_PATH')
+
 
 def get_db_connection():
     """Establish a connection to the SQLite database."""

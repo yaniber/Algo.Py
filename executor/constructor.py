@@ -51,8 +51,8 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
 
     close = close_data
 
-    #if sim_end is not None:
-    #    sim_end = (pd.Timestamp(sim_end) + pd.Timedelta(days=1)).strftime('%Y-%m-%d 00:00:00')
+    if sim_end is not None:
+        sim_end = (pd.Timestamp(sim_end) + pd.Timedelta(days=1)).strftime('%Y-%m-%d 00:00:00')
     
     if 'test' != 'test':
         sim_start = sim_start.strftime('%Y-%m-%d 00:00:00')
@@ -75,8 +75,8 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         slippage=0.001,
         allow_partial=False,
         size_granularity=1.0,
-        #sim_start=sim_start,
-        #sim_end=sim_end,
+        sim_start=sim_start,
+        sim_end=sim_end,
     )
 
     return pf 

@@ -103,8 +103,8 @@ def execute_trades_zerodha(trades: pd.DataFrame) -> tuple[list, list]:
             if '.NS' in symbol:
                 symbol = symbol.replace('.NS', '')
             side = row['Side']
-            size = row['Size']
-            price = row['Price']
+            size = int(row['Size'])
+            price = float(row['Price'])
 
             order_id = kite.place_order(tradingsymbol=symbol,
                                 exchange=kite.EXCHANGE_NSE,

@@ -15,7 +15,7 @@ def pipeline(sim_start):
     
     symbol_list = fetch_symbol_list_indian_equity(complete_list=False)
     symbol_list_500 = fetch_symbol_list_indian_equity(complete_list=False, index_name='nifty_500')
-    #fill_gap(market_name='indian_equity', timeframe='1d', complete_list=False)
+    fill_gap(market_name='indian_equity', timeframe='1d', complete_list=False)
     
     ohlcv_data = fetch_entries(market_name='indian_equity', timeframe='1d', all_entries=False, symbol_list=symbol_list)
     
