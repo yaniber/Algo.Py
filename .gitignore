@@ -1,4 +1,6 @@
 __pycache__/
+Quantipy/strategy/private
+strategy/private/
 strategy/private/*
 .env
 *.db
