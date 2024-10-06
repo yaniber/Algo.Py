@@ -258,11 +258,14 @@ def fetch_latest_date(market_name=None, timeframe=None):
     symbol_id = cursor.fetchone()[0]
 
     cursor.execute("""
-    SELECT MAX(timestamp)
-    FROM ohlcv_data
-    WHERE symbol_id = ? AND timeframe = ?
-    """, (symbol_id, timeframe))
-
+    SELECT MIN(max_timestamp) FROM (
+        SELECT MAX(timestamp) as max_timestamp
+        FROM ohlcv_data
+        WHERE timeframe = ?
+        GROUP BY symbol_id
+    ) subquery
+    """, (timeframe,))
+    
     timestamp = cursor.fetchone()[0]
     timestamp = pd.to_datetime(timestamp)
     conn.close()

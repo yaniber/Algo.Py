@@ -3,18 +3,27 @@ from data.fetch.indian_equity import fetch_symbol_list_indian_equity
 from executor.executor import get_fresh_trades
 from executor.monitor import TradeMonitor
 import pandas as pd
+from utils.data.dataframe import get_top_symbols_by_average_volume
 pd.set_option('future.no_silent_downcasting', True)
 
-def run_pipeline(ohlcv_data, sim_start, sim_end, complete_list=False):
+def run_pipeline(ohlcv_data : pd.DataFrame, 
+                 sim_start : pd.Timestamp, 
+                 sim_end : pd.Timestamp, 
+                 complete_list : bool = False, 
+                 symbol_list : list = [], 
+                 weekday : int = 2,
+                 init_cash : float = 100000):
 
     """
     Run the pipeline in intervals defined by sim_start and sim_end
     """
     
-    symbol_list = fetch_symbol_list_indian_equity(complete_list=complete_list)
+    #symbol_list = fetch_symbol_list_indian_equity(complete_list=complete_list)
+    if symbol_list == []:
+        symbol_list = get_top_symbols_by_average_volume(ohlcv_data, 1200)
 
     trade_monitor = TradeMonitor()
-    fresh_buys, fresh_sells = get_fresh_trades(ohlcv_data, symbol_list, trade_monitor, sim_start, sim_end)
+    fresh_buys, fresh_sells = get_fresh_trades(ohlcv_data, symbol_list, trade_monitor, sim_start, sim_end, weekday, init_cash)
 
     return fresh_buys, fresh_sells
 

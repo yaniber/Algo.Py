@@ -4,6 +4,8 @@ from strategy.private.SOTM import get_signals
 
 def construct_portfolio(ohlcv_data: pd.DataFrame, 
                      symbol_list: list,
+                     weekday : int = 2,
+                     init_cash : float = 100000,
                      buy_on_open: bool = False,
                      sim_start: pd.Timestamp = None, 
                      sim_end: pd.Timestamp = None):
@@ -42,7 +44,7 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         A vectorbt portfolio object.
     """
 
-    entries, exits, close_data = get_signals(ohlcv_data, symbol_list)
+    entries, exits, close_data, open_data = get_signals(ohlcv_data, symbol_list, weekday = weekday)
 
 
     if buy_on_open:
@@ -67,7 +69,7 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         entries=entries,
         exits=exits,
         direction='longonly',
-        init_cash=100000,
+        init_cash=init_cash,
         cash_sharing=True,
         size=0.1,
         size_type="valuepercent",

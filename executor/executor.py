@@ -5,7 +5,13 @@ import os
 from dotenv import load_dotenv
 from utils.notifier.telegram import send_telegram_message
 
-def get_fresh_trades(ohlcv_data: pd.DataFrame, symbol_list: list, trade_monitor: TradeMonitor, sim_start : pd.Timestamp, sim_end : pd.Timestamp):
+def get_fresh_trades(ohlcv_data: pd.DataFrame, 
+                     symbol_list: list, 
+                     trade_monitor: TradeMonitor, 
+                     sim_start : pd.Timestamp, 
+                     sim_end : pd.Timestamp, 
+                     weekday : int = 2,
+                     init_cash : float = 100000):
     """
     Gets fresh buys and sells from the portfolio's trade history by utilizing the TradeMonitor class.
 
@@ -34,7 +40,7 @@ def get_fresh_trades(ohlcv_data: pd.DataFrame, symbol_list: list, trade_monitor:
         - fresh_sells: DataFrame of fresh "Sell" trades.
     """
     # Create the portfolio using the provided OHLCV data and symbol list
-    portfolio = construct_portfolio(ohlcv_data=ohlcv_data, symbol_list=symbol_list, sim_start=sim_start, sim_end=sim_end)
+    portfolio = construct_portfolio(ohlcv_data=ohlcv_data, symbol_list=symbol_list, sim_start=sim_start, sim_end=sim_end, weekday=weekday, init_cash=init_cash)
 
     trade_history = portfolio.trade_history
     
@@ -85,6 +91,7 @@ def execute_trades_zerodha(trades: pd.DataFrame) -> tuple[list, list]:
     """
     from jugaad_trader import Zerodha
     import pyotp
+    import json
 
     load_dotenv(dotenv_path='config/.env')
     userid = os.getenv('USER_ID')
@@ -106,13 +113,17 @@ def execute_trades_zerodha(trades: pd.DataFrame) -> tuple[list, list]:
             size = int(row['Size'])
             price = float(row['Price'])
 
-            order_id = kite.place_order(tradingsymbol=symbol,
+            try:
+                order_id = kite.place_order(tradingsymbol=symbol,
                                 exchange=kite.EXCHANGE_NSE,
                                 transaction_type=kite.TRANSACTION_TYPE_BUY if side == 'Buy' else kite.TRANSACTION_TYPE_SELL,
                                 quantity=size,
                                 order_type=kite.ORDER_TYPE_MARKET,
-                                product=kite.PRODUCT_CNC,
-                                variety=kite.VARIETY_REGULAR)
+                                    product=kite.PRODUCT_CNC,
+                                    variety=kite.VARIETY_REGULAR)
+            except Exception as e:
+                failed_trades.append({'symbol': symbol, 'side': side, 'size': size, 'price': price, 'status': 'REJECTED', 'error': str(e), 'order_id': None, 'orders_df': json.dumps({})})
+                continue
             
             orders = pd.DataFrame(kite.orders())
 
@@ -120,11 +131,11 @@ def execute_trades_zerodha(trades: pd.DataFrame) -> tuple[list, list]:
 
             if status == 'REJECTED':
                 errmsg = orders[orders['order_id'] == order_id]['status_message'].values[0]
-                failed_trades.append({'symbol': symbol, 'side': side, 'size': size, 'price': price, 'status': status, 'error': errmsg, 'order_id': order_id, 'orders_df': orders})
+                failed_trades.append({'symbol': symbol, 'side': side, 'size': size, 'price': price, 'status': status, 'error': errmsg, 'order_id': order_id, 'orders_df': orders.to_json()})
             elif status == 'COMPLETE':
                 fill_price = orders[orders['order_id'] == order_id]['average_price'].values[0]
                 fill_quantity = orders[orders['order_id'] == order_id]['filled_quantity'].values[0]
-                successful_trades.append({'symbol': symbol, 'side': side, 'size': size, 'price': price, 'status': status, 'fill_price': fill_price, 'fill_quantity': fill_quantity, 'order_id': order_id, 'orders_df': orders})
+                successful_trades.append({'symbol': symbol, 'side': side, 'size': size, 'price': price, 'status': status, 'fill_price': fill_price, 'fill_quantity': fill_quantity, 'order_id': order_id, 'orders_df': orders.to_json()})
         return successful_trades, failed_trades
     else:
         return [], []

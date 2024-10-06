@@ -48,7 +48,7 @@ def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
         nifty_500 = ['^NSE500'] + nifty_500_stocks
 
         # Combine all symbols
-        all_symbols = nifty_50 + nifty_midcap_100 + nifty_smallcap_100 + nifty_500
+        all_symbols = nifty_50 + nifty_midcap_100 + nifty_smallcap_100
 
         if complete_list:
             complete_symbols_list = nse_eq_symbols()
@@ -64,7 +64,13 @@ def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
             return list(set(nifty_500))
 
         # Remove any duplicates
-        all_symbols = list(set(all_symbols))
+        all_symbols_cleaned = []
+        for symbol in all_symbols:
+            if '.NS' not in symbol and '^' not in symbol:
+                symbol = symbol + '.NS'
+            all_symbols_cleaned.append(symbol)
+
+        all_symbols = list(set(all_symbols_cleaned))
         return all_symbols
     except Exception as e:
         print('msg=%s, error=%s', 'Error fetching symbol list', str(e))
