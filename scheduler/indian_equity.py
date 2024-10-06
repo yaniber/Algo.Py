@@ -121,7 +121,4 @@ def Scheduler(sim_start):
 
 if __name__ == '__main__':
     sim_start = pd.Timestamp.now() - pd.Timedelta(days=4)
-    #Scheduler(sim_start)
-    pipeline(sim_start)
-    execute_trades()
-    retry_failed_trades()
+    Scheduler(sim_start)
