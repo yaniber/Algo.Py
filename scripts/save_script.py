@@ -26,6 +26,20 @@ if __name__ == '__main__':
         data_type = 'equity-india'
         complete_list_input = input("Fetch complete list? (y/n): ")
         complete_list = complete_list_input.lower() == 'y'
+        
+        # Add option to choose index_name
+        print("Choose the index:")
+        print("1. all")
+        print("2. nse_eq_symbols")
+        index_choice = input("Enter the number corresponding to your choice (default is 'all'): ")
+        
+        if index_choice == '2':
+            index_name = 'nse_eq_symbols'
+        else:
+            index_name = 'all'
+        
+        # Add option to calculate technical indicators
+        calc_indicators = input("Calculate technical indicators? (y/n): ").lower() == 'y'
     elif data_type_choice == '3':
         initialize_database()
         sys.exit(0)
@@ -44,6 +58,13 @@ if __name__ == '__main__':
     if data_type == 'crypto-binance':
         store_crypto_binance(timeframe, data_points, type, suffix)
     elif data_type == 'equity-india':
-        store_indian_equity(timeframe, data_points, complete_list)
+        symbol_list = store_indian_equity(timeframe, data_points, complete_list, index_name)
+        
+        if calc_indicators:
+            from data.calculate.indian_equity import calculate_technical_indicators
+            start_timestamp = None  # You may want to add logic to determine the start timestamp
+            all_entries = True if index_name == 'all' else False
+            timeframe = timeframe if timeframe != '1y' else '1d'
+            calculate_technical_indicators('indian_equity', start_timestamp, all_entries, symbol_list, timeframe)
     else:
         print("Invalid data type. Please choose 'crypto-binance' or 'equity-india'.")

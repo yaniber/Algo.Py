@@ -7,7 +7,10 @@ import yfinance as yf
 from nsepython import nsefetch, nse_eq_symbols
 from datetime import datetime, timedelta
 from utils.decorators import cache_decorator
-
+import pandas as pd
+import requests
+from io import StringIO
+import time
 
 def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.now()):
     '''
@@ -32,9 +35,13 @@ def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
     '''
     Fetches the list of all symbols from the NSE website if complete_list = True
     Otherwise fetches only the top 250 stocks.
-    index_name : 'all', 'nifty_50', 'nifty_midcap_100', 'nifty_smallcap_100', 'nifty_500'
+    index_name : 'all', 'nifty_50', 'nifty_midcap_100', 'nifty_smallcap_100', 'nifty_500', 'nse_eq_symbols'
     '''
     try:
+        if index_name == 'nse_eq_symbols':
+            return fetch_nse_eq_symbols()
+
+        # Original functionality starts here
         # Get stock lists from indices
         nifty_50_stocks = get_index_stocks_indian_equity('NIFTY 50')
         midcap_100_stocks = get_index_stocks_indian_equity('NIFTY MIDCAP 100')
@@ -95,3 +102,30 @@ def get_index_stocks_indian_equity(index_name):
     except Exception as e:
         print('msg=%s, index_name=%s, error=%s', 'Error fetching index stocks', index_name, str(e))
         raise Exception(f"Error fetching index stocks for {index_name}: {e}")
+
+def fetch_nse_eq_symbols(max_retries=3, delay=5):
+    '''
+    Fetches the list of all EQ series symbols from the NSE CSV file.
+    '''
+    url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            df = pd.read_csv(StringIO(response.text))
+            eq_symbols = df[df[' SERIES'] == 'EQ']['SYMBOL'].tolist()
+            eq_symbols = [f"{symbol}.NS" for symbol in eq_symbols]
+            eq_symbols.append('^NSEI')
+            return eq_symbols
+        except Exception as e:
+            print(f'Attempt {attempt + 1} failed. Error: {str(e)}')
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+            else:
+                print('msg=%s, error=%s', 'Error fetching NSE EQ symbols', str(e))
+                raise Exception(f"Error fetching NSE EQ symbols: {e}")

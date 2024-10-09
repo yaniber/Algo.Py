@@ -10,7 +10,7 @@ from data.calculate.indian_equity import update_calculated_indicators
 from utils.decorators import clear_specific_cache
 import pandas as pd
 
-def fill_gap(market_name, timeframe, complete_list=False):
+def fill_gap(market_name, timeframe, complete_list=False, index_name='nse_eq_symbols'):
 
     '''
     Fetches the latest date from the database and gathers the ohlcv data from the NSE website.
@@ -27,7 +27,7 @@ def fill_gap(market_name, timeframe, complete_list=False):
     '''
 
     latest_date = fetch_latest_date(market_name=market_name, timeframe=timeframe)
-    symbols, data = gather_ohlcv_indian_equity(timeframe=timeframe, start_date=latest_date, complete_list=complete_list)
+    symbols, data = gather_ohlcv_indian_equity(timeframe=timeframe, start_date=latest_date, complete_list=complete_list, index_name=index_name)
     
     store_indian_equity_gaps(symbols, data, timeframe)
     update_calculated_indicators(market_name='indian_equity', symbol_list=symbols, timeframe=timeframe, all_entries=complete_list)

@@ -12,3 +12,4 @@ tqdm==4.66.1
 yfinance==0.2.40
 jugaad-trader==0.19
 pyotp==2.9.0
+jugaad-data==0.26

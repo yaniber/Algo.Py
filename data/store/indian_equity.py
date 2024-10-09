@@ -13,11 +13,11 @@ load_dotenv(dotenv_path='config/.env')
 database_path = os.getenv('DATABASE_PATH')
 
 
-def store_indian_equity(timeframe='1y', data_points_back=1, complete_list=False):
+def store_indian_equity(timeframe='1y', data_points_back=1, complete_list=False, index_name='nse_eq_symbols'):
 
     start_time = calculate_start_time(timeframe, data_points_back)
     timeframe = timeframe if timeframe != '1y' else '1d'
-    symbols, data = gather_ohlcv_indian_equity(timeframe=timeframe, start_date=start_time, complete_list=complete_list)
+    symbols, data = gather_ohlcv_indian_equity(timeframe=timeframe, start_date=start_time, complete_list=complete_list, index_name=index_name)
     batch_inserter = BatchInserter(database_path=database_path, table='ohlcv_data')
 
     for symbol in tqdm(symbols):
