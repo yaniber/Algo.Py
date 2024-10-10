@@ -2,7 +2,7 @@ import os
 import sqlite3
 import pandas as pd
 from dotenv import load_dotenv
-from utils.decorators import cache_decorator
+from utils.decorators import cache_decorator, clear_specific_cache, fetch_cache_keys
 import time
 
 import sys 
@@ -112,11 +112,10 @@ def insert_data(batch_inserter=None, market_name=None, symbol_name=None, timefra
             else:
                 print(f"Error inserting data: {e}")
                 break
-        except Exception as e:
-            print(f"Error inserting data: {e}")
-            break
         finally:
             #conn.close() -> removed due to database locking issues.
+            if fetch_cache_keys(func_name='fetch_entries') != {}:
+                clear_specific_cache(func_name='fetch_entries', market_name=market_name, timeframe=timeframe) # Clears outdated cache.
             return
 
 if __name__ == "__main__":

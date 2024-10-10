@@ -5,13 +5,15 @@ from utils.decorators import cache_decorator
 @cache_decorator()
 def gather_ohlcv_indian_equity(timeframe='1d', start_date=None, complete_list=False, index_name='nse_eq_symbols'):
     '''
-    Gathers OHLCV data from Binance for all symbols that match the given type and suffix.
+    Gathers OHLCV data for indian equity for all symbols that match the given type and suffix.
 
+    Input:
     timeframe: '1d', '1h', '15m', '5m', '1m'
     start_date: datetime object
     complete_list: True or False
 
     Output:
+    symbols: list of symbols
     data: dict of {symbol: df}
     '''
     

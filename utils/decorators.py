@@ -101,8 +101,10 @@ def clear_specific_cache(func_name, **param_filters):
     deleted_count = 0
     for key in keys_to_delete:
         try:
-            del cache[key]
-            deleted_count += 1
+            if cache.delete(key):
+                deleted_count += 1
+            else:
+                print(f"Key not found or couldn't be deleted: {key}")
         except KeyError:
             # Key not found, just skip it
             print(f"Key not found: {key}")
@@ -156,7 +158,7 @@ def clear_cache():
     """
     cache.clear()
 
-def fetch_cache_keys(func_name=None):
+def fetch_cache_keys(func_name : str = None) -> dict:
     """
     Fetch all cache keys, optionally filtered by function name.
     
