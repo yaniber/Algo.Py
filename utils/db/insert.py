@@ -115,7 +115,7 @@ def insert_data(batch_inserter=None, market_name=None, symbol_name=None, timefra
         finally:
             #conn.close() -> removed due to database locking issues.
             if fetch_cache_keys(func_name='fetch_entries') != {}:
-                clear_specific_cache(func_name='fetch_entries', market_name=market_name, timeframe=timeframe) # Clears outdated cache.
+                clear_specific_cache(func_name='fetch_entries') # Clears outdated cache.
             return
 
 if __name__ == "__main__":

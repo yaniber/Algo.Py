@@ -35,30 +35,22 @@ def cache_decorator(expire=86400):  # Default expiration is 1 day
 
     """
     def decorator(func):
-        # Get the function's signature
-        sig = inspect.signature(func)
-        param_names = list(sig.parameters.keys())
-
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # Create a cache key that includes the function name and all parameters
-            key_parts = [func.__name__]
-
-            # Add positional arguments with their parameter names
-            key_parts.extend(f"{param_names[i]}={arg}" for i, arg in enumerate(args))
-
-            # Add keyword arguments
-            key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
-
-            cache_key = "/".join(key_parts)
-
+            # Filter out non-pickleable arguments
+            filtered_args = tuple(arg for arg in args if is_pickleable(arg))
+            filtered_kwargs = {k: v for k, v in kwargs.items() if is_pickleable(v)}
+            
+            # Generate cache key
+            cache_key = generate_cache_key(func.__name__, filtered_args, filtered_kwargs)
+            
             if cache_key in cache:
                 return cache[cache_key]
 
             result = func(*args, **kwargs)
 
-            # Store result in cache with expiration
-            cache.set(cache_key, result, expire=expire)
+            # Store result in cache with expiration and tag
+            cache.set(cache_key, result, expire=expire, tag=func.__name__)
 
             return result
         return wrapper
@@ -71,48 +63,17 @@ def generate_cache_key(func_name, args, kwargs):
     key_structure = (func_name, args, tuple(sorted(kwargs.items())))
     return hashlib.md5(pickle.dumps(key_structure)).hexdigest()
 
-def clear_specific_cache(func_name, **param_filters):
+def clear_specific_cache(func_name):
     """
-    Clear cache entries for a specific function.
-    If param_filters are provided, only clear entries matching those filters.
-    If no param_filters are provided, clear all entries for the function.
+    Clear cache entries for a specific function using tags.
     """
-    keys_to_delete = []
-    
-    for key in cache.iterkeys():
-        key_str = str(key)
-        parts = key_str.split('/')
-        
-        if parts[0] != func_name:
-            continue
-        
-        if not param_filters:
-            # If no filters are provided, add all keys for this function
-            keys_to_delete.append(key)
-        else:
-            # Extract parameters from the key
-            params = dict(part.split('=') for part in parts[1:] if '=' in part)
-            
-            # Check if all provided filters match
-            if all(params.get(k) == str(v) for k, v in param_filters.items()):
-                keys_to_delete.append(key)
-
-    # Delete the identified keys
-    deleted_count = 0
-    for key in keys_to_delete:
-        try:
-            if cache.delete(key):
-                deleted_count += 1
-            else:
-                print(f"Key not found or couldn't be deleted: {key}")
-        except KeyError:
-            # Key not found, just skip it
-            print(f"Key not found: {key}")
-            pass
-        except Exception as e:
-            print(f"Error deleting key {key}: {e}")
-
-    return deleted_count  # Return number of successfully deleted keys
+    try:
+        deleted_count = cache.evict(func_name)
+        print(f"Successfully cleared {deleted_count} cache entries for function: {func_name}")
+        return deleted_count
+    except Exception as e:
+        print(f"Error clearing cache for function {func_name}: {e}")
+        return 0
 
 def update_cache(func_name, result, expire, **param_filters):
     """
@@ -158,9 +119,9 @@ def clear_cache():
     """
     cache.clear()
 
-def fetch_cache_keys(func_name : str = None) -> dict:
+def fetch_cache_keys(func_name: str = '') -> dict:
     """
-    Fetch all cache keys, optionally filtered by function name.
+    Fetch all cache keys, optionally filtered by function name (tag).
     
     Args:
     func_name (str, optional): If provided, only fetch keys for this function.
@@ -171,17 +132,19 @@ def fetch_cache_keys(func_name : str = None) -> dict:
     cache_keys = {}
     
     for key in cache.iterkeys():
-        key_str = str(key)
-        parts = key_str.split('/')
-        
-        if not parts:
+        try:
+            # Fetch the tag (function name) for this key
+            _, tag = cache.get(key, expire_time=False, tag=True)
+            
+            if func_name == '' or tag == func_name:
+                if tag not in cache_keys:
+                    cache_keys[tag] = []
+                cache_keys[tag].append(key)
+        except KeyError:
+            # Handle case where key might have been deleted
             continue
-        
-        current_func_name = parts[0]
-        
-        if func_name is None or current_func_name == func_name:
-            if current_func_name not in cache_keys:
-                cache_keys[current_func_name] = []
-            cache_keys[current_func_name].append(key_str)
+        except Exception as e:
+            print(f"Error processing key {key}: {e}")
+            continue
     
     return cache_keys

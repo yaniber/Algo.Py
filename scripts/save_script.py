@@ -6,8 +6,30 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.store.crypto_binance import store_crypto_binance
 from data.store.indian_equity import store_indian_equity
-from utils.decorators import clear_cache # Import clear_cache function
+from utils.decorators import clear_cache, fetch_cache_keys, clear_specific_cache  # Import clear_cache function
 from utils.db.initialize import initialize_database
+
+
+def manage_cache():
+    print("1. Clear cache")
+    print("2. Fetch cache keys")
+    print("3. Clear specific cache")
+    choice = input("Enter the number corresponding to your choice: ")
+
+    if choice == '1':
+        clear_cache()
+        print("Cache cleared successfully.")
+    elif choice == '2':
+        print("Enter the function name (blank to fetch all):")
+        func_name = input("Function name: ")
+        print(fetch_cache_keys(func_name))
+    elif choice == '3':
+        print("Enter the function name:")
+        func_name = input("Function name: ")
+        clear_specific_cache(func_name)
+    else:
+        print("Invalid choice. Please choose 1, 2 or 3.")
+    sys.exit(0)
 
 if __name__ == '__main__':
     # Ask user for input
@@ -15,7 +37,7 @@ if __name__ == '__main__':
     print("1. crypto-binance")
     print("2. equity-india")
     print("3. Initialize database")
-    print("4. clear cache")
+    print("4. Manage cache")
     data_type_choice = input("Enter the number corresponding to your choice: ")
 
     if data_type_choice == '1':
@@ -44,9 +66,7 @@ if __name__ == '__main__':
         initialize_database()
         sys.exit(0)
     elif data_type_choice == '4':
-        clear_cache()  # Clear the cache
-        print("Cache cleared successfully.")
-        sys.exit(0)
+        manage_cache()
     else:
         print("Invalid choice. Please choose 1, 2 or 3.")
         sys.exit(1)

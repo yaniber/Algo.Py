@@ -13,3 +13,5 @@ yfinance==0.2.40
 jugaad-trader==0.19
 pyotp==2.9.0
 jugaad-data==0.26
+duckdb==1.1.0
+duckdb_engine==0.13.2
