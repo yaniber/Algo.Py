@@ -31,18 +31,6 @@ def pipeline(sim_start):
 
 def execute_trades():
     # Load fresh buys and sells if files exist
-    if os.path.exists('database/db/fresh_buys.parquet'):
-        fresh_buys = pd.read_parquet('database/db/fresh_buys.parquet')
-        execute_trades_telegram(fresh_buys)
-        successful_trades, failed_trades = execute_trades_zerodha(fresh_buys)
-        
-        # Save failed trades
-        if failed_trades:
-            pd.DataFrame(failed_trades).to_parquet('database/db/failed_buys.parquet')
-        
-        # Remove fresh buys file regardless of trade success
-        os.remove('database/db/fresh_buys.parquet')
-    
     if os.path.exists('database/db/fresh_sells.parquet'):
         fresh_sells = pd.read_parquet('database/db/fresh_sells.parquet')
         execute_trades_telegram(fresh_sells)
@@ -55,7 +43,39 @@ def execute_trades():
         # Remove fresh sells file regardless of trade success
         os.remove('database/db/fresh_sells.parquet')
 
+    if os.path.exists('database/db/fresh_buys.parquet'):
+        fresh_buys = pd.read_parquet('database/db/fresh_buys.parquet')
+        execute_trades_telegram(fresh_buys)
+        successful_trades, failed_trades = execute_trades_zerodha(fresh_buys)
+        
+        # Save failed trades
+        if failed_trades:
+            pd.DataFrame(failed_trades).to_parquet('database/db/failed_buys.parquet')
+        
+        # Remove fresh buys file regardless of trade success
+        os.remove('database/db/fresh_buys.parquet')
+    
+
 def retry_failed_trades():
+
+    # Retry failed sells (similar to failed buys)
+    if os.path.exists('database/db/failed_sells.parquet'):
+        failed_sells = pd.read_parquet('database/db/failed_sells.parquet')
+        failed_sells_formatted = failed_sells.apply(lambda x: {
+            'Column': x['symbol'],
+            'Side': x['side'],
+            'Size': x['size'],
+            'Price': x['price']
+        }, axis=1).tolist()
+        
+        execute_trades_telegram(pd.DataFrame(failed_sells_formatted))
+        successful_trades_sell, still_failed_trades_sell = execute_trades_zerodha(pd.DataFrame(failed_sells_formatted))
+        
+        if still_failed_trades_sell:
+            pd.DataFrame(still_failed_trades_sell).to_parquet('database/db/failed_sells.parquet')
+        else:
+            os.remove('database/db/failed_sells.parquet')
+            
     # Retry failed buys
     if os.path.exists('database/db/failed_buys.parquet'):
         failed_buys = pd.read_parquet('database/db/failed_buys.parquet')
@@ -75,23 +95,6 @@ def retry_failed_trades():
         else:
             os.remove('database/db/failed_buys.parquet')
     
-    # Retry failed sells (similar to failed buys)
-    if os.path.exists('database/db/failed_sells.parquet'):
-        failed_sells = pd.read_parquet('database/db/failed_sells.parquet')
-        failed_sells_formatted = failed_sells.apply(lambda x: {
-            'Column': x['symbol'],
-            'Side': x['side'],
-            'Size': x['size'],
-            'Price': x['price']
-        }, axis=1).tolist()
-        
-        execute_trades_telegram(pd.DataFrame(failed_sells_formatted))
-        successful_trades_sell, still_failed_trades_sell = execute_trades_zerodha(pd.DataFrame(failed_sells_formatted))
-        
-        if still_failed_trades_sell:
-            pd.DataFrame(still_failed_trades_sell).to_parquet('database/db/failed_sells.parquet')
-        else:
-            os.remove('database/db/failed_sells.parquet')
 
 def Scheduler(sim_start):
     '''
