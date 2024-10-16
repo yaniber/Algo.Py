@@ -20,10 +20,10 @@ def pipeline(sim_start):
     
     #ohlcv_data = fetch_entries(market_name='indian_equity', timeframe='1d', all_entries=False, symbol_list=symbol_list)
     ohlcv_data = fetch_entries(market_name='indian_equity', timeframe='1d', all_entries=True)
-    symbol_list = get_top_symbols_by_average_volume(ohlcv_data, 1200)
+    symbol_list = fetch_symbol_list_indian_equity(index_name='nse_eq_symbols')
     
     sim_end = pd.Timestamp.now().strftime('%Y-%m-%d 00:00:00')
-    fresh_buys, fresh_sells = run_pipeline(ohlcv_data, sim_start, sim_end, complete_list=False, symbol_list=symbol_list, weekday=4, init_cash=40000)
+    fresh_buys, fresh_sells = run_pipeline(ohlcv_data, sim_start, sim_end, complete_list=False, symbol_list=symbol_list, weekday=1, init_cash=40000)
     
     # Save fresh buys and sells to parquet files
     fresh_buys.to_parquet('database/db/fresh_buys.parquet')
@@ -123,5 +123,6 @@ def Scheduler(sim_start):
         time.sleep(1)
 
 if __name__ == '__main__':
-    sim_start = pd.Timestamp.now() - pd.Timedelta(days=4)
-    Scheduler(sim_start)
+    sim_start = pd.Timestamp.now() - pd.Timedelta(days=14)
+    #Scheduler(sim_start)
+    pipeline(sim_start)

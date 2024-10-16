@@ -7,6 +7,7 @@ from utils.calculation.slope_r2 import calculate_exponential_regression_optimize
 from utils.calculation.optimized_indicators import calculate_spike_optimized, detect_large_gap_optimized, calculate_average_volume_optimized
 from dotenv import load_dotenv
 from data.fetch.indian_equity import fetch_symbol_list_indian_equity
+from finstore.finstore import Finstore
 import os
 import traceback
 from utils.db.batch import BatchInserter
@@ -18,27 +19,41 @@ load_dotenv(dotenv_path='config/.env')
 # Access the DATABASE_PATH environment variable
 database_path = os.getenv('DATABASE_PATH')
 
-def calculate_technical_indicators(market_name, start_timestamp, all_entries, symbol_list, timeframe='1d'):
+def calculate_technical_indicators(market_name, start_timestamp, all_entries, symbol_list, timeframe='1d', storage_system='finstore'):
     '''
     One time run function for calculating all custom indicators for a given market.
     Calculates and saves the indicator results into database.
     '''
     try:
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_ema, length=100)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_ema, length=200)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=faster_supertrend, period=7, multiplier=3)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_exponential_regression_optimized, window=90)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_exponential_regression_optimized, window=30)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_exponential_regression_optimized, window=15)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
-        fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_average_volume_optimized, lookback_period=90)
+        if storage_system == 'sqlite':
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_ema, length=100)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_ema, length=200)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=faster_supertrend, period=7, multiplier=3)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_exponential_regression_optimized, window=90)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_exponential_regression_optimized, window=30)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_exponential_regression_optimized, window=15)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
+            fetch_calculate_and_insert(market_name=market_name, timeframe=timeframe, start_timestamp=start_timestamp, all_entries=all_entries, symbol_list=symbol_list, calculation_func=calculate_average_volume_optimized, lookback_period=90)
+
+        elif storage_system == 'finstore':
+            finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True)
+            ohlcv_data = finstore.read.symbol_list(symbol_list=symbol_list)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_ema, length=100)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_ema, length=200)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=faster_supertrend, period=7, multiplier=3)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=90)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=30)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=15)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_average_volume_optimized, lookback_period=90)
     except Exception as e:
         print(f"Error calculating technical indicators: {e}")
         print(f"Full traceback:")
         print(traceback.format_exc())
 
-def update_calculated_indicators(market_name='indian_equity', symbol_list=[], all_entries=True, timeframe='1d', data_lookback_period=500):
+def update_calculated_indicators(market_name='indian_equity', symbol_list=[], all_entries=True, timeframe='1d', data_lookback_period=500, storage_system='finstore'):
     
     '''
     Update the calculated indicators for the given market, symbols, and timeframe. Ideal for running everyday to update the indicators for new data.
@@ -53,17 +68,31 @@ def update_calculated_indicators(market_name='indian_equity', symbol_list=[], al
     
     if not symbol_list:
         symbol_list = fetch_symbol_list_indian_equity(complete_list=all_entries)
-   
+    
     try:
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_ema, length=100)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_ema, length=200)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=faster_supertrend, period=7, multiplier=3)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_exponential_regression_optimized, window=90)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_exponential_regression_optimized, window=30)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_exponential_regression_optimized, window=15)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
-        update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_average_volume_optimized, lookback_period=90)
+        if storage_system == 'sqlite':
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_ema, length=100)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_ema, length=200)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=faster_supertrend, period=7, multiplier=3)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_exponential_regression_optimized, window=90)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_exponential_regression_optimized, window=30)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_exponential_regression_optimized, window=15)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
+            update_technical_indicators(market_name=market_name, timeframe=timeframe, symbol_list=symbol_list, data_lookback_period=data_lookback_period, calculation_func=calculate_average_volume_optimized, lookback_period=90)
+        
+        elif storage_system == 'finstore':
+            finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True, limit_data_lookback=data_lookback_period)
+            ohlcv_data = finstore.read.symbol_list(symbol_list=symbol_list)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_ema, length=100)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_ema, length=200)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=faster_supertrend, period=7, multiplier=3)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=90)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=30)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=15)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
+            finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_average_volume_optimized, lookback_period=90)
     except Exception as e:
         print(f"Error updating technical indicators: {e}")
         print(f"Full traceback:")
