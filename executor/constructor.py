@@ -44,7 +44,9 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         A vectorbt portfolio object.
     """
 
-    entries, exits, close_data, open_data = get_signals(ohlcv_data, symbol_list, weekday = weekday)
+    top_n = 5
+
+    entries, exits, close_data, open_data = get_signals(ohlcv_data, symbol_list, weekday = weekday, fast_ema_period=10, slow_ema_period=100, top_n=top_n, slope_period=90, configuration=2)
 
 
     if buy_on_open:
@@ -71,7 +73,7 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         direction='longonly',
         init_cash=init_cash,
         cash_sharing=True,
-        size=0.1,
+        size=1/top_n,
         size_type="valuepercent",
         fees=0.0005,
         slippage=0.001,
