@@ -2,13 +2,11 @@ import pandas as pd
 import vectorbtpro as vbt
 from strategy.private.SOTM import get_signals
 
-def construct_portfolio(ohlcv_data: pd.DataFrame, 
-                     symbol_list: list,
-                     weekday : int = 2,
-                     init_cash : float = 100000,
+def construct_portfolio(init_cash : float = 100000,
                      buy_on_open: bool = False,
                      sim_start: pd.Timestamp = None, 
-                     sim_end: pd.Timestamp = None):
+                     sim_end: pd.Timestamp = None,
+                     params : dict = None):
     """
     Creates and returns a vectorbt portfolio object based on the provided OHLCV data, symbol list, and other parameters.
 
@@ -44,9 +42,8 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         A vectorbt portfolio object.
     """
 
-    top_n = 5
 
-    entries, exits, close_data, open_data = get_signals(ohlcv_data, symbol_list, weekday = weekday, fast_ema_period=10, slow_ema_period=100, top_n=top_n, slope_period=90, configuration=2)
+    entries, exits, close_data, open_data = get_signals(**params)
 
 
     if buy_on_open:
@@ -66,6 +63,11 @@ def construct_portfolio(ohlcv_data: pd.DataFrame,
         close = close[close.index >= sim_start]
     
     # Create the portfolio
+    if 'top_n' in params:
+        top_n = params['top_n']
+    else: 
+        top_n = 10
+    
     pf = vbt.Portfolio.from_signals(
         close=close,
         entries=entries,

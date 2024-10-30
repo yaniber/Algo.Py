@@ -15,3 +15,6 @@ pyotp==2.9.0
 jugaad-data==0.26
 duckdb==1.1.0
 duckdb_engine==0.13.2
+dask==2024.10.0
+dask-expr==1.1.16
+streamlit-autorefresh==1.0.1

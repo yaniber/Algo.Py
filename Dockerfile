@@ -37,7 +37,7 @@ RUN pip install --quiet --no-cache-dir 'pybind11'
 RUN pip install --quiet --no-cache-dir --ignore-installed 'llvmlite'
 
 RUN pip install --quiet --no-cache-dir \
-    'numpy==1.23.5' \
+    'numpy==1.24.2' \
     'pandas>=1.5.0' \
     'numba==0.60.0' \
     'schedule' \
