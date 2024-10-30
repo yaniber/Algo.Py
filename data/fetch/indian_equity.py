@@ -31,7 +31,7 @@ def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.n
         return None
 
 @cache_decorator(expire=60*60*24*30)
-def fetch_symbol_list_indian_equity(complete_list=False, index_name='all'):
+def fetch_symbol_list_indian_equity(complete_list=False, index_name='nse_eq_symbols'):
     '''
     Fetches the list of all symbols from the NSE website if complete_list = True
     Otherwise fetches only the top 250 stocks.

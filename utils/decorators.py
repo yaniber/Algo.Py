@@ -37,22 +37,26 @@ def cache_decorator(expire=86400):  # Default expiration is 1 day
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # Filter out non-pickleable arguments
-            filtered_args = tuple(arg for arg in args if is_pickleable(arg))
-            filtered_kwargs = {k: v for k, v in kwargs.items() if is_pickleable(v)}
-            
-            # Generate cache key
-            cache_key = generate_cache_key(func.__name__, filtered_args, filtered_kwargs)
-            
-            if cache_key in cache:
-                return cache[cache_key]
+            try:
+                # Filter out non-pickleable arguments
+                filtered_args = tuple(arg for arg in args if is_pickleable(arg))
+                filtered_kwargs = {k: v for k, v in kwargs.items() if is_pickleable(v)}
+                
+                # Generate cache key
+                cache_key = generate_cache_key(func.__name__, filtered_args, filtered_kwargs)
+                
+                if cache_key in cache:
+                    return cache[cache_key]
 
-            result = func(*args, **kwargs)
+                result = func(*args, **kwargs)
 
-            # Store result in cache with expiration and tag
-            cache.set(cache_key, result, expire=expire, tag=func.__name__)
+                # Store result in cache with expiration and tag
+                cache.set(cache_key, result, expire=expire, tag=func.__name__)
 
-            return result
+                return result
+            except Exception as fault:
+                print('Failed in Cache fetch.')
+                raise fault
         return wrapper
     return decorator
 

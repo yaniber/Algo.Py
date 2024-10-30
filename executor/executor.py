@@ -40,7 +40,8 @@ def get_fresh_trades(ohlcv_data: pd.DataFrame,
         - fresh_sells: DataFrame of fresh "Sell" trades.
     """
     # Create the portfolio using the provided OHLCV data and symbol list
-    portfolio = construct_portfolio(ohlcv_data=ohlcv_data, symbol_list=symbol_list, sim_start=sim_start, sim_end=sim_end, weekday=weekday, init_cash=init_cash)
+    params = {'ohlcv_data' : ohlcv_data, 'symbol_list' : symbol_list, 'weekday' : weekday, 'top_n' : 10}
+    portfolio = construct_portfolio(sim_start=sim_start, sim_end=sim_end, init_cash=init_cash, params=params)
 
     trade_history = portfolio.trade_history
     
