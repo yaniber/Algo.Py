@@ -73,10 +73,10 @@ def execute_trades_telegram(trades: pd.DataFrame):
         
         # Send the trade execution message
         full_message = f"Executing {trades.shape[0]} trades:\n{trade_message}"
-        send_telegram_message(message=full_message, token=token, chat_id=group_id)
+        send_telegram_message(message=full_message)
     else:
         full_message = f"No trades to execute"
-        send_telegram_message(message=full_message, token=token, chat_id=group_id)
+        send_telegram_message(message=full_message)
 
 def execute_trades_zerodha(trades: pd.DataFrame) -> tuple[list, list]:
     """

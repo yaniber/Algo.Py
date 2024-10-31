@@ -1,3 +1,7 @@
+"""
+Execute from root as : python scheduler/indian_equity.py
+"""
+
 from data.update.indian_equity import fill_gap
 from data.fetch.indian_equity import fetch_symbol_list_indian_equity
 from utils.db.fetch import fetch_entries
@@ -109,7 +113,7 @@ def Scheduler(sim_start):
     schedule.every().day.at(target_time_utc_pipeline.strftime('%H:%M')).do(pipeline, sim_start)
 
     # Schedule trade execution at 9:01 AM IST
-    target_time_ist_execute = datetime.now(ist).replace(hour=9, minute=1, second=0, microsecond=0)
+    target_time_ist_execute = datetime.now(ist).replace(hour=9, minute=15, second=0, microsecond=0)
     target_time_utc_execute = target_time_ist_execute.astimezone(utc).time()
     schedule.every().day.at(target_time_utc_execute.strftime('%H:%M')).do(execute_trades)
 

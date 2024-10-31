@@ -7,11 +7,8 @@ def send_telegram_message(message, token=None, chat_id=None):
     if token is None:
         token = os.getenv('TELEGRAM_TOKEN')
         chat_ids = os.getenv('TELEGRAM_GROUP_ID').split(',')
-        print(token , chat_ids)
     
     for chat_id in chat_ids:
-        print(chat_id)
-        print(type(chat_id))
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = {
             'chat_id': chat_id,
