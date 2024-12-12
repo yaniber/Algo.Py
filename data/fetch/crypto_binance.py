@@ -1,6 +1,7 @@
 import ccxt
 import pandas as pd
 from datetime import datetime
+import time
 
 def fetch_ohlcv_binance(symbol, timeframe, start_date):
     exchange = ccxt.binance()
@@ -8,7 +9,12 @@ def fetch_ohlcv_binance(symbol, timeframe, start_date):
     limit = 200  # Most exchanges allow a max of 500 entries per request
     since = int(start_date.timestamp() * 1000)
     while True:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
+        try:
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
+        except Exception as e:
+            print(f"Error fetching {symbol}: {e}")
+            time.sleep(2)
+            continue
         if not ohlcv:
             break
         all_ohlcv.extend(ohlcv)

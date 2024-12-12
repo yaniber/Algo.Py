@@ -10,12 +10,13 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class Finstore:
-    def __init__(self, market_name :str , timeframe : str, base_directory : str ='database/finstore', enable_append : bool = True, limit_data_lookback : int = -1):
+    def __init__(self, market_name :str , timeframe : str, base_directory : str ='database/finstore', enable_append : bool = True, limit_data_lookback : int = -1, pair : str = ''):
         self.base_directory = base_directory
         self.market_name = market_name
         self.timeframe = timeframe
         self.enable_append = enable_append
         self.limit_data_lookback = limit_data_lookback
+        self.pair = pair
         self.read = self.Read(self)
         self.write = self.Write(self)
 
@@ -24,6 +25,7 @@ class Finstore:
             self.market_name = finstore_instance.market_name
             self.timeframe = finstore_instance.timeframe
             self.base_directory = finstore_instance.base_directory
+            self.pair = finstore_instance.pair
 
         def symbol(self, symbol : str):
             
@@ -123,7 +125,10 @@ class Finstore:
             if not os.path.isdir(file_path):
                 raise FileNotFoundError(f"Directory not found for market '{self.market_name}' at '{file_path}'")
             
-            symbol_list = [folder for folder in os.listdir(file_path) if os.path.isdir(os.path.join(file_path, folder))]
+            if self.pair != '':
+                symbol_list = [str(folder) + '/' + str(self.pair) for folder in os.listdir(file_path) if os.path.isdir(os.path.join(file_path, folder))]
+            else:
+                symbol_list = [folder for folder in os.listdir(file_path) if os.path.isdir(os.path.join(file_path, folder))]
             return symbol_list  
     
     class Write:

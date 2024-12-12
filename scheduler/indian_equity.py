@@ -128,5 +128,5 @@ def Scheduler(sim_start):
 
 if __name__ == '__main__':
     sim_start = pd.Timestamp.now() - pd.Timedelta(days=6)
-    #Scheduler(sim_start)
-    pipeline(sim_start)
+    Scheduler(sim_start)
+    #pipeline(sim_start)
