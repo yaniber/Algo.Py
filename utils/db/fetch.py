@@ -25,7 +25,7 @@ def fetch_in_batches(cursor, query, params, batch_size, last_id=None):
             last_id = rows[-1][0]  # Assuming the first column is the unique ID
             pbar.update(len(rows))
 
-@cache_decorator(expire=60*60*24*30)
+#@cache_decorator(expire=60*60*24*30)
 def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_list=None, all_entries=False, start_timestamp=None, batch_size=500000, storage_system='finstore'):
     '''
     Fetches OHLCV data and technical indicators from the database.

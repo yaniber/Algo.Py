@@ -6,31 +6,33 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import yfinance as yf
 from nsepython import nsefetch, nse_eq_symbols
 from datetime import datetime, timedelta
-from utils.decorators import cache_decorator
+from utils.decorators import cache_decorator, retry_decorator
 import pandas as pd
 import requests
 from io import StringIO
 import time
 
+@retry_decorator(retries=5, backoff_factor=2, initial_delay=2, raise_exception=False)
 def fetch_ohlcv_indian_equity(symbol, timeframe, start_date, end_date=datetime.now()):
     '''
     returns data from start_date to end_date for the given symbol.
     Reiterate for all symbols to get all data.
     '''
+    if '.NS' not in symbol and '^' not in symbol:
+        symbol = symbol + '.NS'
+    session = requests.Session()
     try:
-        if '.NS' not in symbol and '^' not in symbol:
-            symbol = symbol + '.NS'
-        data = yf.download(symbol, start=start_date, end=end_date, interval=timeframe)
-        data.reset_index(inplace=True)
-        data.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
-        data.drop(columns=['adj_close'], inplace=True)
-        data['timestamp'] = data['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        return data
+        data = yf.download(symbol, start=start_date, end=end_date, interval=timeframe, timeout=10, session=session)
     except Exception as e:
-        print('msg=%s, symbol=%s, error=%s', 'Error fetching data for symbol', symbol, str(e))
-        return None
+        print(f'Error fetching data for {symbol}: {str(e)}')
+        raise e #This is not really raised - it just triggers the retry decorator and returns None.
+    data.reset_index(inplace=True)
+    data.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+    data.drop(columns=['adj_close'], inplace=True)
+    data['timestamp'] = data['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    return data
 
-@cache_decorator(expire=60*60*24*30)
+#@cache_decorator(expire=60*60*24*30)
 def fetch_symbol_list_indian_equity(complete_list=False, index_name='nse_eq_symbols'):
     '''
     Fetches the list of all symbols from the NSE website if complete_list = True

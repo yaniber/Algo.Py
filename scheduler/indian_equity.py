@@ -1,6 +1,8 @@
-"""
-Execute from root as : python scheduler/indian_equity.py
-"""
+'''
+This is the main file for the Indian Equity pipeline.
+Run as a module to start the pipeline.
+python -m scheduler.indian_equity
+'''
 
 from data.update.indian_equity import fill_gap
 from data.fetch.indian_equity import fetch_symbol_list_indian_equity
@@ -9,7 +11,8 @@ from executor.indian_equity_pipeline import run_pipeline
 import pandas as pd
 import schedule
 import time
-from executor.executor import execute_trades_telegram, execute_trades_zerodha
+from executor.executor import execute_trades_telegram, execute_trades_zerodha, is_market_open, get_balance
+from utils.notifier.telegram import send_telegram_message
 from utils.data.dataframe import get_top_symbols_by_average_volume
 import pytz
 from datetime import datetime, timedelta
@@ -18,22 +21,36 @@ import os
 def pipeline(sim_start):
     print("Pipeline started")
     
-    #symbol_list = fetch_symbol_list_indian_equity(complete_list=False)
-    #symbol_list_500 = fetch_symbol_list_indian_equity(complete_list=False, index_name='nifty_500')
     fill_gap(market_name='indian_equity', timeframe='1d', complete_list=True)
-    
-    #ohlcv_data = fetch_entries(market_name='indian_equity', timeframe='1d', all_entries=False, symbol_list=symbol_list)
-    ohlcv_data = fetch_entries(market_name='indian_equity', timeframe='1d', all_entries=True)
-    symbol_list = fetch_symbol_list_indian_equity(index_name='nse_eq_symbols')
-    
-    sim_end = pd.Timestamp.now().strftime('%Y-%m-%d 00:00:00')
-    fresh_buys, fresh_sells = run_pipeline(ohlcv_data, sim_start, sim_end, complete_list=False, symbol_list=symbol_list, weekday=1, init_cash=40000)
+    try: 
+        symbol_list = fetch_symbol_list_indian_equity(index_name='nse_eq_symbols')
+        ohlcv_data = fetch_entries(market_name='indian_equity', timeframe='1d', all_entries=True)
+        print(ohlcv_data['SBIN.NS']['timestamp'].max())
+        
+        sim_end = pd.Timestamp.now().strftime('%Y-%m-%d 00:00:00')
+        fresh_buys, fresh_sells = run_pipeline(ohlcv_data, sim_start, sim_end, complete_list=False, symbol_list=symbol_list, weekday=2, init_cash=30000)
+    except Exception as e:
+        print(e)
     
     # Save fresh buys and sells to parquet files
-    fresh_buys.to_parquet('database/db/fresh_buys.parquet')
-    fresh_sells.to_parquet('database/db/fresh_sells.parquet')
+    if not fresh_buys.empty:
+        fresh_buys.to_parquet('database/db/fresh_buys.parquet')
+    if not fresh_sells.empty:
+        fresh_sells.to_parquet('database/db/fresh_sells.parquet')
 
 def execute_trades():
+    '''
+    This function executes the trades for the day.
+    '''
+
+    if not is_market_open():
+        send_telegram_message('Market is closed for today. Skipping trade execution.')
+        return
+
+    if not os.path.exists('database/db/fresh_buys.parquet') and not os.path.exists('database/db/fresh_sells.parquet'):
+        send_telegram_message('No fresh trades to execute. Skipping trade execution.')
+        return
+
     # Load fresh buys and sells if files exist
     if os.path.exists('database/db/fresh_sells.parquet'):
         fresh_sells = pd.read_parquet('database/db/fresh_sells.parquet')
@@ -99,6 +116,9 @@ def retry_failed_trades():
         else:
             os.remove('database/db/failed_buys.parquet')
     
+def balance_and_holdings():
+    portfolio_message = get_balance()
+    send_telegram_message(portfolio_message)
 
 def Scheduler(sim_start):
     '''
@@ -111,6 +131,11 @@ def Scheduler(sim_start):
     target_time_ist_pipeline = datetime.now(ist).replace(hour=19, minute=0, second=0, microsecond=0)
     target_time_utc_pipeline = target_time_ist_pipeline.astimezone(utc).time()
     schedule.every().day.at(target_time_utc_pipeline.strftime('%H:%M')).do(pipeline, sim_start)
+
+    # Schedule pipeline at 5 PM IST
+    target_time_ist_pipeline = datetime.now(ist).replace(hour=17, minute=0, second=0, microsecond=0)
+    target_time_utc_pipeline = target_time_ist_pipeline.astimezone(utc).time()
+    schedule.every().day.at(target_time_utc_pipeline.strftime('%H:%M')).do(balance_and_holdings)
 
     # Schedule trade execution at 9:01 AM IST
     target_time_ist_execute = datetime.now(ist).replace(hour=9, minute=15, second=0, microsecond=0)

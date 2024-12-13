@@ -18,5 +18,21 @@ def gather_ohlcv_indian_equity(timeframe='1d', start_date=None, complete_list=Fa
     '''
     
     symbols = fetch_symbol_list_indian_equity(complete_list=complete_list, index_name=index_name)
-    data = {symbol: df for symbol in tqdm(symbols) if (df := fetch_ohlcv_indian_equity(symbol, timeframe, start_date)) is not None}
+    skipped_symbols = []
+    data = {}
+    for symbol in tqdm(symbols):
+        df = fetch_ohlcv_indian_equity(symbol, timeframe, start_date)
+        if df is not None:
+            data[symbol] = df
+        else:
+            skipped_symbols.append(symbol)
+
+    for symbol in tqdm(skipped_symbols):
+        df = fetch_ohlcv_indian_equity(symbol, timeframe, start_date)
+        if df is not None:
+            data[symbol] = df
+        else:
+            print(f'Error fetching data for {symbol}')
+    
+    print(f'Skipped_symbols: {skipped_symbols}')
     return symbols, data

@@ -25,7 +25,7 @@ def fill_gap(market_name, timeframe, complete_list=False, index_name='nse_eq_sym
     complete_list : bool, optional
         Whether to fetch the complete list of stocks. Default is False.
     '''
-    try : 
+    try:
         if storage_system == 'sqlite':
             latest_date = fetch_latest_date(market_name=market_name, timeframe=timeframe, storage_system='sqlite')
             symbols, data = gather_ohlcv_indian_equity(timeframe=timeframe, start_date=latest_date, complete_list=complete_list, index_name=index_name)
@@ -35,16 +35,17 @@ def fill_gap(market_name, timeframe, complete_list=False, index_name='nse_eq_sym
         
         elif storage_system == 'finstore':
             latest_date = fetch_latest_date(market_name=market_name, timeframe=timeframe, storage_system='finstore')
+            print(f'latest date : {latest_date}')
+            clear_specific_cache('gather_ohlcv_indian_equity')
             symbols, data = gather_ohlcv_indian_equity(timeframe=timeframe, start_date=latest_date, complete_list=complete_list, index_name=index_name)
             store_indian_equity_gaps(symbols, data, timeframe)
+            latest_date = fetch_latest_date(market_name=market_name, timeframe=timeframe, storage_system='finstore')
+            print(f'latest date after storing: {latest_date}')
             update_calculated_indicators(market_name='indian_equity', symbol_list=symbols, timeframe=timeframe, all_entries=complete_list)
     except Exception as e:
         print(e)
 
-    try : 
-        clear_specific_cache('fetch_entries')
-    except Exception as e:
-        print(e)
+    clear_specific_cache('fetch_entries')
 
     #clear_specific_cache('fetch_ohlcv_data', market_name=market_name, timeframe=timeframe, all_entries=complete_list)
 

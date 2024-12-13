@@ -19,6 +19,20 @@ class Finstore:
         self.pair = pair
         self.read = self.Read(self)
         self.write = self.Write(self)
+        self.list_items_in_dir() # For debugging
+
+    def list_items_in_dir(self):
+        """
+        Lists all items in the directory for the given market and timeframe.
+        """
+        dir_path = os.path.join(self.base_directory, f"market_name={self.market_name}", f"timeframe={self.timeframe}")
+        try:
+            items = os.listdir(dir_path)
+            print(f"Len items in '{dir_path}': {len(items)}")
+        except FileNotFoundError:
+            print(f"Directory '{dir_path}' not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     class Read: 
         def __init__(self, finstore_instance):

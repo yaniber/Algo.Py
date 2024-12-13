@@ -17,6 +17,10 @@ class Telegram(OMS):
             load_dotenv(dotenv_path='config/.env')
             self.token = os.getenv('TELEGRAM_TOKEN')
             self.group_id = os.getenv('TELEGRAM_GROUP_ID') 
+            if token:
+                self.token = token
+            if group_id:
+                self.group_id = group_id
         else:
             self.token = token
             self.group_id = group_id

@@ -59,6 +59,8 @@ class TradeMonitor:
             - fresh_buys: DataFrame of fresh "Buy" trades.
             - fresh_sells: DataFrame of fresh "Sell" trades.
         """
+        fresh_buys = pd.DataFrame()
+        fresh_sells = pd.DataFrame()
 
         if self.past_positions.empty:
             fresh_trades = current_trade_history

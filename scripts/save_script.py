@@ -8,6 +8,7 @@ from data.store.crypto_binance import store_crypto_binance
 from data.store.indian_equity import store_indian_equity
 from utils.decorators import clear_cache, fetch_cache_keys, clear_specific_cache  # Import clear_cache function
 from utils.db.initialize import initialize_database
+from data.fetch.indian_equity import fetch_symbol_list_indian_equity
 
 
 def manage_cache():
@@ -78,7 +79,8 @@ if __name__ == '__main__':
     if data_type == 'crypto-binance':
         store_crypto_binance(timeframe, data_points, type, suffix)
     elif data_type == 'equity-india':
-        symbol_list = store_indian_equity(timeframe, data_points, complete_list, index_name)
+        store_indian_equity(timeframe, data_points, complete_list, index_name)
+        symbol_list = fetch_symbol_list_indian_equity(index_name='nse_eq_symbols')
         
         if calc_indicators:
             from data.calculate.indian_equity import calculate_technical_indicators

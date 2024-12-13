@@ -5,6 +5,8 @@ import time
 import hashlib
 import pickle
 import inspect
+import time
+import functools
 
 # Create a cache object
 cache = dc.Cache('database/db')
@@ -152,3 +154,39 @@ def fetch_cache_keys(func_name: str = '') -> dict:
             continue
     
     return cache_keys
+
+def retry_decorator(retries=5, backoff_factor=2, initial_delay=2, raise_exception=True):
+    """
+    Retry decorator with exponential backoff.
+    
+    Args:
+    retries (int): Number of retry attempts.
+    backoff_factor (int): Factor by which the delay increases.
+    initial_delay (int): Initial delay in seconds.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            delay = initial_delay
+            total_sleep_time = 0
+
+            while attempt < retries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    attempt += 1
+                    if attempt == retries:
+                        print(f"Failed after {retries} attempts.")
+                        if raise_exception:
+                            raise e
+                        else:
+                            return None
+                    print(f"Attempt {attempt} failed: {e}. Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    total_sleep_time += delay
+                    delay *= backoff_factor
+
+            print(f"Total sleep time: {total_sleep_time} seconds")
+        return wrapper
+    return decorator
