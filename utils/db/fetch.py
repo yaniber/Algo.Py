@@ -26,7 +26,7 @@ def fetch_in_batches(cursor, query, params, batch_size, last_id=None):
             pbar.update(len(rows))
 
 #@cache_decorator(expire=60*60*24*30)
-def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_list=None, all_entries=False, start_timestamp=None, batch_size=500000, storage_system='finstore'):
+def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_list=None, all_entries=False, start_timestamp=None, batch_size=500000, storage_system='finstore', pair=''):
     '''
     Fetches OHLCV data and technical indicators from the database.
     
@@ -107,7 +107,7 @@ def fetch_entries(batch_inserter=None, market_name=None, timeframe=None, symbol_
         return result
     
     elif storage_system == 'finstore':
-        finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True)
+        finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True, pair=pair)
         symbols = finstore.read.get_symbol_list()
         merged_dataframe = finstore.read.symbol_list(symbol_list=symbols, merged_dataframe=True)
         return merged_dataframe
@@ -230,7 +230,7 @@ def fetch_ohlcv_data_for_symbol(symbol, market_name, timeframe, period=500):
     df = df.sort_values(by='timestamp')
     return df
 
-def fetch_latest_date(market_name=None, timeframe=None, storage_system = 'finstore'):
+def fetch_latest_date(market_name=None, timeframe=None, storage_system = 'finstore', pair=''):
     '''
     Fetches the latest date for a given market and timeframe.
     
@@ -283,13 +283,14 @@ def fetch_latest_date(market_name=None, timeframe=None, storage_system = 'finsto
     
     elif storage_system == 'finstore':
 
-        finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True)
+        finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True, pair=pair)
         symbols = finstore.read.get_symbol_list()
         ohlcv_data = finstore.read.symbol_list(symbol_list=symbols)
     
         latest_timestamps = {}
         for symbol, df in ohlcv_data.items():
-            latest_timestamps[symbol] = df['timestamp'].max()
+            if not df.empty:
+                latest_timestamps[symbol] = df['timestamp'].max()
 
         latest_timestamps_series = pd.Series(latest_timestamps)
         min_latest_timestamp = latest_timestamps_series.min()

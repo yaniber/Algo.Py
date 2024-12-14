@@ -19,6 +19,7 @@ class Finstore:
         self.pair = pair
         self.read = self.Read(self)
         self.write = self.Write(self)
+        self.stream = self.Stream(self)
         self.list_items_in_dir() # For debugging
 
     def list_items_in_dir(self):
@@ -276,4 +277,100 @@ class Finstore:
                     self.process_indicator(symbol, df, calculation_func, calculation_kwargs)
 
             print(f"{calculation_func.__name__} calculation and insertion completed for market: {self.market_name} and timeframe: {self.timeframe}")
+    
+    class Stream:
+        """
+        Streams data to the finstore.
 
+        Args:
+            appends (bool) : enable appends if file already exists, useful for adding future data or more technical indicators.
+
+        Functions:
+            symbol(self, symbol : str, data : pd.DataFrame) : writes symbol ohlcv to parquet file.
+            indicator(self, ohlcv_data : dict, calculation_func : callable, **calculation_kwargs) : writes technical indicators to parquet file.
+        """
+        def __init__(self, finstore_instance):
+            self.market_name = finstore_instance.market_name
+            self.timeframe = finstore_instance.timeframe
+            self.base_directory = finstore_instance.base_directory
+            self.enable_append = finstore_instance.enable_append
+        
+        PRESET_CONFIGS = {
+        'binance_kline': lambda message: {
+            'timestamp': message['k']['t'],
+            'open': float(message['k']['o']),
+            'high': float(message['k']['h']),
+            'low': float(message['k']['l']),
+            'close': float(message['k']['c']),
+            'volume': float(message['k']['v']),
+            'buy_volume': float(message['k']['V']),
+        },
+        # Add more presets as needed
+        }
+
+        def save_trade_data(self, symbol: str, message: dict, parse_func: callable = None, preset: str = None, save_raw_data: bool = True):
+            """
+            Saves the received trade message to a Parquet file for the given symbol.
+
+            Args:
+                symbol (str): The symbol for which the trade data is received.
+                message (dict): The trade message containing trade details.
+                parse_func (callable): A function to parse the message into OHLCV format.
+                preset (str): A preset to parse the message into OHLCV format. ex : ['binance_kline']
+                save_raw_data (bool): Whether to save the raw data or not.
+            """
+            # Define the directory path
+            dir_path = os.path.join(self.base_directory, f"market_name={self.market_name}", f"timeframe={self.timeframe}", symbol)
+            os.makedirs(dir_path, exist_ok=True)
+            
+            # Define the file path
+            file_path = os.path.join(dir_path, 'ohlcv_data.parquet')
+            
+            # Determine the parsing function
+            if preset and preset in self.PRESET_CONFIGS:
+                parse_func = self.PRESET_CONFIGS[preset]
+            
+            # Parse the message using the provided function or preset
+            if parse_func:
+                df = pd.DataFrame([parse_func(message)])
+            else:
+                # Default parsing if no function or preset is provided
+                df = pd.DataFrame([message])
+
+            # Append to existing file if it exists
+            if os.path.isfile(file_path) and self.enable_append:
+                existing_df = pd.read_parquet(file_path)
+                df = pd.concat([existing_df, df], ignore_index=True)
+                df = df.drop_duplicates(subset=['timestamp'], keep='last')
+            
+            # Save to Parquet
+            df.to_parquet(file_path, index=False, compression='zstd')
+
+            if save_raw_data:
+                df_raw = pd.DataFrame([message])
+                if os.path.isfile(os.path.join(dir_path, 'raw_data.parquet')) and self.enable_append:
+                    existing_df = pd.read_parquet(os.path.join(dir_path, 'raw_data.parquet'))
+                    df_raw = pd.concat([existing_df, df_raw], ignore_index=True)
+
+                df_raw.to_parquet(os.path.join(dir_path, 'raw_data.parquet'), index=False, compression='zstd')
+
+
+        def fetch_trade_data(self, symbol: str) -> pd.DataFrame:
+            """
+            Fetches the trade data for a given symbol from a Parquet file.
+
+            Args:
+                symbol (str): The symbol for which to fetch trade data.
+
+            Returns:
+                pd.DataFrame: The DataFrame containing trade data for the symbol.
+            """
+            # Define the file path
+            file_path = os.path.join(self.base_directory, f"market_name={self.market_name}", f"timeframe={self.timeframe}", symbol, 'ohlcv_data.parquet')
+            
+            # Check if the file exists
+            if not os.path.isfile(file_path):
+                raise FileNotFoundError(f"Trade data file not found for symbol '{symbol}' at '{file_path}'")
+            
+            # Read and return the DataFrame
+            return pd.read_parquet(file_path)

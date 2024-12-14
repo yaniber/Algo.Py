@@ -98,8 +98,8 @@ def fetch_ohlcv_data_gecko_meme(address, days=15, resolution="minute", aggregate
     }
 
     # Initialize variables for pagination
-    current_timestamp = int(datetime.utcnow().timestamp())  # Current timestamp in epoch
-    start_timestamp = int((datetime.utcnow() - timedelta(days=days)).timestamp())
+    current_timestamp = int(datetime.now(datetime.UTC).timestamp())  # Current timestamp in epoch
+    start_timestamp = int((datetime.now(datetime.UTC) - timedelta(days=days)).timestamp())
     all_data = []
 
     while current_timestamp > start_timestamp:

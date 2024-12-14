@@ -41,7 +41,7 @@ def calculate_technical_indicators(market_name, symbol_list, timeframe='1d'):
         print(f"Full traceback:")
         print(traceback.format_exc())
 
-def update_calculated_indicators(market_name='indian_equity', symbol_list=[], all_entries=True, timeframe='1d', data_lookback_period=500):
+def update_calculated_indicators(market_name='crypto_binance', symbol_list=[], all_entries=True, timeframe='4h', data_lookback_period=500, pair='BTC'):
     
     '''
     Update the calculated indicators for the given market, symbols, and timeframe. Ideal for running everyday to update the indicators for new data.
@@ -58,7 +58,7 @@ def update_calculated_indicators(market_name='indian_equity', symbol_list=[], al
         symbol_list = fetch_symbol_list_indian_equity(complete_list=all_entries)
     
     try:
-        finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True, limit_data_lookback=data_lookback_period)
+        finstore = Finstore(market_name=market_name, timeframe=timeframe, enable_append=True, limit_data_lookback=data_lookback_period, pair=pair)
         ohlcv_data = finstore.read.symbol_list(symbol_list=symbol_list)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_ema, length=100)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_ema, length=200)

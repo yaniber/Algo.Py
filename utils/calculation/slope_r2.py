@@ -52,6 +52,14 @@ def calculate_exponential_regression_optimized(df, window=90):
     slope_r2_product = slopes * r2_values
     return pd.Series(slope_r2_product, index=df.index)
 
+@result_df_decorator(lambda window: f'slope_r2_volume_{window}')
+def calculate_exponential_regression_volume(df, window=90):
+    log_close = np.log(df['volume'].values)
+    slopes, r2_values = calculate_slope_r2_rolling(log_close, window)
+    
+    slope_r2_product = slopes * r2_values
+    return pd.Series(slope_r2_product, index=df.index)
+
 """ # If you want to use vectorbtpro for even more performance, you can use this alternative implementation:
 @result_df_decorator(lambda window: f'slope_r2_product_{window}')
 def calculate_exponential_regression_vbt(df, window=90):

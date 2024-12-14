@@ -12,3 +12,8 @@ def store_crypto_binance(timeframe='1y', data_points_back=1, type='spot', suffix
 
     finstore = Finstore(market_name='crypto_binance', timeframe=timeframe, enable_append=True)
     finstore.write.symbol_list(data_ohlcv=data)
+
+def store_crypto_binance_gaps(symbols, data, timeframe, pair=''):
+
+    finstore = Finstore(market_name='crypto_binance', timeframe=timeframe, enable_append=True, pair=pair)
+    finstore.write.symbol_list(data_ohlcv=data)

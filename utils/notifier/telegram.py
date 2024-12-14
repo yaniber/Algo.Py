@@ -6,7 +6,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def send_telegram_message(message, token=None, chat_id=None):
     if token is None:
         token = os.getenv('TELEGRAM_TOKEN')
+    if chat_id is None:
         chat_ids = os.getenv('TELEGRAM_GROUP_ID').split(',')
+    else:
+        chat_ids = [chat_id]
     
     for chat_id in chat_ids:
         url = f"https://api.telegram.org/bot{token}/sendMessage"

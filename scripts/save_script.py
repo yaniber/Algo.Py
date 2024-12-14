@@ -45,6 +45,7 @@ if __name__ == '__main__':
         data_type = 'crypto-binance'
         type = input("Enter the type (e.g., spot, futures): ")
         suffix = input("Enter the suffix (e.g., USDT, BTC): ")
+        calc_indicators = input("Calculate technical indicators? (y/n): ").lower() == 'y'
     elif data_type_choice == '2':
         data_type = 'equity-india'
         complete_list_input = input("Fetch complete list? (y/n): ")
@@ -78,6 +79,12 @@ if __name__ == '__main__':
     # Save data based on user input
     if data_type == 'crypto-binance':
         store_crypto_binance(timeframe, data_points, type, suffix)
+        if calc_indicators:
+            from data.calculate.crypto_binance import calculate_technical_indicators
+            from finstore.finstore import Finstore
+            finstore = Finstore(market_name='crypto_binance', timeframe=timeframe, enable_append=True, pair='BTC')
+            symbol_list = finstore.read.get_symbol_list()
+            calculate_technical_indicators(market_name='crypto_binance', symbol_list=symbol_list, timeframe=timeframe)
     elif data_type == 'equity-india':
         store_indian_equity(timeframe, data_points, complete_list, index_name)
         symbol_list = fetch_symbol_list_indian_equity(index_name='nse_eq_symbols')
