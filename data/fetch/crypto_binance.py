@@ -13,7 +13,7 @@ def fetch_ohlcv_binance(symbol, timeframe, start_date):
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
         except Exception as e:
             print(f"Error fetching {symbol}: {e}")
-            time.sleep(2)
+            time.sleep(5)
             continue
         if not ohlcv:
             break
