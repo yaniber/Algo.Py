@@ -98,3 +98,5 @@ ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Command to keep the container running
 CMD ["tail", "-f", "/dev/null"]
+
+# might need to add apt update && apt install -y python3 python3-dev g++ pybind11-dev

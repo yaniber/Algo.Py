@@ -47,7 +47,7 @@ def default_handle_message(pair, message, symbol_trade_data, anomaly_dict, finst
                 print(f"Warning: Missed trades for {pair}. Previous 'a': {previous_message['a']}, Current 'a': {message['a']}")
 
     symbol_trade_data[pair].append(message)
-    finstore.stream.save_trade_data(pair, message, preset='agg_trade')
+    #finstore.stream.save_trade_data(pair, message, preset='agg_trade')
 
 current_handle_message = default_handle_message
 

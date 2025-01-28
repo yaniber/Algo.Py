@@ -34,5 +34,5 @@ def fetch_symbol_list_binance(type='spot', suffix='USDT'):
     '''
     exchange = ccxt.binance()
     markets = exchange.load_markets()
-    symbols = [market.split(':')[0] for market in markets if markets[market]['type'] == type and market.split(':')[0].endswith(f'/{suffix}')] 
+    symbols = [market.split(':')[0] for market in markets if markets[market]['type'] == type and market.split(':')[0].endswith(f'/{suffix}')]
     return symbols
