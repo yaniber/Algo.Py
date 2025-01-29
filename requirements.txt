@@ -18,3 +18,4 @@ dask==2024.10.0
 dask-expr==1.1.16
 streamlit-autorefresh==1.0.1
 cloudscraper==1.2.71
+binance-connector==3.11.0

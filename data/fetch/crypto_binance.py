@@ -13,7 +13,7 @@ def fetch_ohlcv_binance(symbol, timeframe, start_date):
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
         except Exception as e:
             print(f"Error fetching {symbol}: {e}")
-            time.sleep(2)
+            time.sleep(5)
             continue
         if not ohlcv:
             break
@@ -34,5 +34,5 @@ def fetch_symbol_list_binance(type='spot', suffix='USDT'):
     '''
     exchange = ccxt.binance()
     markets = exchange.load_markets()
-    symbols = [market.split(':')[0] for market in markets if markets[market]['type'] == type and market.split(':')[0].endswith(f'/{suffix}')] 
+    symbols = [market.split(':')[0] for market in markets if markets[market]['type'] == type and market.split(':')[0].endswith(f'/{suffix}')]
     return symbols

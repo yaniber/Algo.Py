@@ -304,6 +304,20 @@ class Finstore:
             'close': float(message['k']['c']),
             'volume': float(message['k']['v']),
             'buy_volume': float(message['k']['V']),
+            'dedup' : message['k']['t'],
+        },
+        'agg_trade': lambda message: {
+            'event_type': message['e'],  # Event type
+            'event_time': message['E'],  # Event time
+            'symbol': message['s'],      # Symbol
+            'aggregate_trade_id': message['a'],  # Aggregate trade ID
+            'price': float(message['p']),        # Price
+            'quantity': float(message['q']),     # Quantity
+            'first_trade_id': message['f'],      # First trade ID
+            'last_trade_id': message['l'],       # Last trade ID
+            'trade_time': message['T'],          # Trade time
+            'is_buyer_maker': message['m'],      # Is the buyer the market maker?
+            'dedup' : message['a'],             # Dedup for agg trade
         },
         # Add more presets as needed
         }
@@ -341,7 +355,10 @@ class Finstore:
             if os.path.isfile(file_path) and self.enable_append:
                 existing_df = pd.read_parquet(file_path)
                 df = pd.concat([existing_df, df], ignore_index=True)
-                df = df.drop_duplicates(subset=['timestamp'], keep='last')
+                if 'timestamp' in df.columns:
+                    df = df.drop_duplicates(subset=['timestamp'], keep='last')
+                elif 'dedup' in df.columns:
+                    df = df.drop_duplicates(subset=['dedup'], keep='last')
             
             # Save to Parquet
             df.to_parquet(file_path, index=False, compression='zstd')

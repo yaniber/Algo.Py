@@ -98,3 +98,24 @@ def calculate_average_volume_optimized(df, lookback_period):
     
     # Return as a pandas Series to keep DataFrame compatibility
     return pd.Series(average_volumes_array, index=df.index)
+
+@result_df_decorator(lambda lookback_period, spike_duration, threshold: f'sustained_volume_spike_{lookback_period}_{spike_duration}_{threshold}')
+def calculate_sustained_volume_spike(df, lookback_period, spike_duration, threshold):
+    # Step 1: Calculate rolling average of volume
+    rolling_avg = df['volume'].rolling(lookback_period, min_periods=1).mean()
+
+    # Step 2: Identify spikes based on threshold
+    spike = df['volume'] > (threshold * rolling_avg)
+
+    # Step 3: Use a rolling sum to detect sustained spikes
+    sustained = spike.rolling(spike_duration, min_periods=1).sum()
+
+    # Step 4: Detect when a sustained spike starts
+    sustained_start = (sustained >= spike_duration).astype(int)
+
+    # Step 5: Propagate the flag until the pump ends
+    # Forward-fill the sustained spike flag until volume no longer meets the threshold
+    df['sustained_spike'] = (
+        sustained_start.cumsum().where(spike).ffill().fillna(0).astype(int)
+    )
+    return df['sustained_spike']

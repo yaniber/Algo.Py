@@ -4,7 +4,7 @@ from utils.flows.fetch_calculate_insert import fetch_calculate_and_insert, updat
 from utils.calculation.indicators import calculate_ema, calculate_supertrend, calculate_spike, detect_large_gap, calculate_average_volume, calculate_exponential_regression
 from utils.calculation.supertrend import faster_supertrend
 from utils.calculation.slope_r2 import calculate_exponential_regression_optimized
-from utils.calculation.optimized_indicators import calculate_spike_optimized, detect_large_gap_optimized, calculate_average_volume_optimized
+from utils.calculation.optimized_indicators import calculate_spike_optimized, detect_large_gap_optimized, calculate_average_volume_optimized, calculate_sustained_volume_spike
 from dotenv import load_dotenv
 from data.fetch.indian_equity import fetch_symbol_list_indian_equity
 from finstore.finstore import Finstore
@@ -33,9 +33,11 @@ def calculate_technical_indicators(market_name, symbol_list, timeframe='1d'):
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=90)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=30)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=15)
-        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
-        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
+        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_spike_optimized, lookback_period=30, spike_threshold=0.85)
+        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=detect_large_gap_optimized, lookback_period=30, gap_threshold=0.15)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_average_volume_optimized, lookback_period=90)
+        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_sustained_volume_spike, lookback_period=50, spike_duration=3, threshold=5) 
+        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_sustained_volume_spike, lookback_period=50, spike_duration=3, threshold=10)   
     except Exception as e:
         print(f"Error calculating technical indicators: {e}")
         print(f"Full traceback:")
@@ -66,8 +68,8 @@ def update_calculated_indicators(market_name='crypto_binance', symbol_list=[], a
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=90)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=30)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_exponential_regression_optimized, window=15)
-        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_spike_optimized, lookback_period=90, spike_threshold=0.15)
-        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=detect_large_gap_optimized, lookback_period=90, gap_threshold=0.15)
+        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_spike_optimized, lookback_period=30, spike_threshold=0.85)
+        finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=detect_large_gap_optimized, lookback_period=30, gap_threshold=0.15)
         finstore.write.indicator(ohlcv_data=ohlcv_data, calculation_func=calculate_average_volume_optimized, lookback_period=90)
     except Exception as e:
         print(f"Error updating technical indicators: {e}")
