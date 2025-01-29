@@ -7,7 +7,10 @@ import pandas as pd
 from OMS.telegram import Telegram  # Assuming this is a custom Telegram integration module
 import json
 import math
+import time
+import threading
 from OMS.oms import OMS
+from concurrent.futures import ThreadPoolExecutor
 
 class Binance(OMS):
 
@@ -183,14 +186,20 @@ class Binance(OMS):
         except BinanceAPIException as e:
             self.telegram.send_telegram_message(f"Failed to fetch available balance for {asset}: {e}")
     
-    def close_futures_positions(self, symbol: str = None, quantity: float = None, quantity_type: str = 'CONTRACTS', percentage: float = None):
+    def close_futures_positions(self, symbol: str = None, quantity: float = None, quantity_type: str = 'CONTRACTS', percentage: float = None,
+                                 use_chaser: bool = False, chaser_params: dict = None):
         """
-        Closes Futures positions.
+        Closes Futures positions, with an option to use the limit order chaser for optimized order execution.
         
         Args:
             symbol (str, optional): Specific symbol to close the position (e.g., 'BTCUSDT').
                                     If None, closes all open positions.
-        
+            quantity (float, optional): Quantity to close. If None, closes the full position.
+            quantity_type (str, optional): 'CONTRACTS' or 'USD'. Default is 'CONTRACTS'.
+            percentage (float, optional): Percentage of the position to close. Overrides `quantity`.
+            use_chaser (bool, optional): If True, uses the limit order chaser to close the position.
+            chaser_params (dict, optional): Parameters for the limit order chaser.
+
         Returns:
             tuple: A tuple of two lists: successful_closes and failed_closes.
         """
@@ -226,57 +235,80 @@ class Binance(OMS):
                 else:  # Default to contracts
                     close_quantity = quantity if quantity else abs(position_amt)
 
-                try:
-                    if close_quantity > abs(position_amt):
-                        print(f"Close quantity exceeds open position size for {symbol}.")
-                    if notional_value < 5:
-                        # Use reduceOnly for small positions
-                        order = self.client.futures_create_order(
-                            symbol=symbol,
-                            side=side,
-                            type="MARKET",
-                            quantity=close_quantity,
-                            reduceOnly=True
-                        )
-                        self.telegram.send_telegram_message(
-                            f"Closed small position for {symbol} using reduceOnly: {order}"
-                        )
-                    else:
-                        # Standard close for larger positions
-                        order = self.client.futures_create_order(
-                            symbol=symbol,
-                            side=side,
-                            type="MARKET",
-                            quantity=close_quantity,
-                            reduceOnly=True
-                        )
-                        self.telegram.send_telegram_message(
-                            f"Closed position for {symbol}: {order}"
-                        )
-
-                    successful_closes.append(order)
-
-                except BinanceAPIException as e:
-                    if "notional must be no smaller than 5" in str(e):
-                        unclosable_positions.append({
+                # Use limit order chaser if enabled
+                if use_chaser:
+                    try:
+                        # Add chaser-specific parameters
+                        chaser_params = chaser_params or {}
+                        chaser_params.update({
                             'symbol': symbol,
-                            'notional': notional_value,
-                            'error': "Notional value too small to close."
+                            'side': side,
+                            'size': close_quantity,
+                            'max_retries' : 240,
+                            'interval' : 2.0,
+                            'reduceOnly' : True,
                         })
-                        self.telegram.send_telegram_message(
-                            f"Unclosable position for {symbol}: Notional value (${notional_value}) too small to close."
-                        )
-                    else:
+
+                        self.limit_order_chaser_async(**chaser_params)
+                        self.telegram.send_telegram_message(f"Started limit order chaser for {symbol}.")
+                    except Exception as e:
                         failed_closes.append({'symbol': symbol, 'error': str(e)})
                         self.telegram.send_telegram_message(
-                            f"Failed to close position for {symbol}: {e}"
+                            f"Failed to start limit order chaser for {symbol}: {e}"
                         )
+                        continue
+                else:
+                    try:
+                        if close_quantity > abs(position_amt):
+                            print(f"Close quantity exceeds open position size for {symbol}.")
+                        if notional_value < 5:
+                            # Use reduceOnly for small positions
+                            order = self.client.futures_create_order(
+                                symbol=symbol,
+                                side=side,
+                                type="MARKET",
+                                quantity=close_quantity,
+                                reduceOnly=True
+                            )
+                            self.telegram.send_telegram_message(
+                                f"Closed small position for {symbol} using reduceOnly: {order}"
+                            )
+                        else:
+                            # Standard close for larger positions
+                            order = self.client.futures_create_order(
+                                symbol=symbol,
+                                side=side,
+                                type="MARKET",
+                                quantity=close_quantity,
+                                reduceOnly=True
+                            )
+                            self.telegram.send_telegram_message(
+                                f"Closed position for {symbol}: {order}"
+                            )
 
-            # Log unclosable positions
-            if unclosable_positions:
-                self.telegram.send_telegram_message(
-                    f"Unclosable positions:\n{unclosable_positions}"
-                )
+                        successful_closes.append(order)
+
+                    except BinanceAPIException as e:
+                        if "notional must be no smaller than 5" in str(e):
+                            unclosable_positions.append({
+                                'symbol': symbol,
+                                'notional': notional_value,
+                                'error': "Notional value too small to close."
+                            })
+                            self.telegram.send_telegram_message(
+                                f"Unclosable position for {symbol}: Notional value (${notional_value}) too small to close."
+                            )
+                        else:
+                            failed_closes.append({'symbol': symbol, 'error': str(e)})
+                            self.telegram.send_telegram_message(
+                                f"Failed to close position for {symbol}: {e}"
+                            )
+
+                # Log unclosable positions
+                if unclosable_positions:
+                    self.telegram.send_telegram_message(
+                        f"Unclosable positions:\n{unclosable_positions}"
+                    )
 
             return successful_closes, failed_closes, unclosable_positions
 
@@ -346,6 +378,131 @@ class Binance(OMS):
         except BinanceAPIException as e:
             self.telegram.send_telegram_message(f"Failed to fetch open futures positions: {e}")
             return pd.DataFrame()  # Return an empty DataFrame in case of failure
+
+    def limit_order_chaser(
+        self, symbol: str, side: str, size: float, max_retries: int = 20, interval: float = 0.5, reduceOnly : bool = False
+    ):
+        """
+        Dynamically chases the limit order price with Post-Only (maker-only) orders.
+        
+        Args:
+            symbol (str): Trading pair symbol (e.g., 'BTCUSDT').
+            side (str): 'BUY' or 'SELL'.
+            size (float): Order size in contracts.
+            max_retries (int): Maximum retries to adjust the order.
+            interval (float): Time in seconds to wait between retries.
+
+        Returns:
+            dict: The result of the filled order, or None if the order was not filled.
+        """
+        try:
+            side = side.upper()
+            # Fetch precision details for the symbol
+            exchange_info = self.client.futures_exchange_info()
+            symbol_info = next(
+                (info for info in exchange_info["symbols"] if info["symbol"] == symbol.upper()), None
+            )
+            if not symbol_info:
+                raise ValueError(f"Symbol {symbol} not found in exchange info.")
+            
+            # Extract precision values
+            tick_size = float(symbol_info["filters"][0]["tickSize"])  # Price precision
+            step_size = float(symbol_info["filters"][2]["stepSize"])  # Quantity precision
+
+            retries = 0
+            order_id = None
+
+            while retries < max_retries:
+
+                # Cancel the previous order if it exists
+                if order_id:
+                    try:
+                        self.client.futures_cancel_order(symbol=symbol, orderId=order_id)
+                    except BinanceAPIException as e:
+                        self.telegram.send_telegram_message(
+                            f"Failed to cancel previous order: {e}"
+                        )
+                        order_status = self.client.futures_get_order(symbol=symbol, orderId=order_id)
+                        if order_status["status"] == "FILLED":
+                            self.telegram.send_telegram_message(f"Failed because Order was filled: {order_status}")
+                            return order_status
+
+                # Fetch the order book
+                order_book = self.client.futures_order_book(symbol=symbol, limit=5)
+                best_bid = float(order_book['bids'][0][0])  # Best bid price
+                best_ask = float(order_book['asks'][0][0])  # Best ask price
+
+                # Adjust the target price slightly to avoid immediate execution
+                if side == "BUY":
+                    target_price = best_ask - tick_size  # Slightly below best ask
+                elif side == "SELL":
+                    target_price = best_bid + tick_size  # Slightly above best bid
+
+                # Round to the appropriate price precision
+                target_price = round(target_price, int(-1 * round(math.log10(tick_size))))
+                
+                # Round size to quantity precision
+                size = round(size // step_size * step_size, int(-1 * round(math.log10(step_size))))
+
+
+                # Place the new limit order with Post-Only (GTX)
+                try:
+                    order = self.client.futures_create_order(
+                        symbol=symbol.upper(),
+                        side=side,
+                        type="LIMIT",
+                        timeInForce="GTX",  # Post-Only mode to ensure maker
+                        quantity=size,
+                        price=target_price,
+                        reduceOnly=reduceOnly,
+                    )
+                    order_id = order["orderId"]
+                    print(f'OrderId : {order_id}')
+                    self.telegram.send_telegram_message(f"Placed limit order: {order}")
+                except BinanceAPIException as e:
+                    # Handle Post-Only rejection gracefully
+                    if "Post Only order will be rejected" in str(e):
+                        self.telegram.send_telegram_message(
+                            f"Post-Only order rejected. Adjusting price and retrying... {e}"
+                        )
+                    else:
+                        self.telegram.send_telegram_message(
+                            f"Failed to place limit order: {e}. Retrying..."
+                        )
+                    retries += 1
+                    continue
+
+                # Wait for the order to fill or timeout
+                time.sleep(interval)
+
+                # Check order status
+                order_status = self.client.futures_get_order(symbol=symbol, orderId=order_id)
+                if order_status["status"] == "FILLED":
+                    self.telegram.send_telegram_message(f"Order filled: {order_status}")
+                    return order_status
+
+                retries += 1
+
+            # If the order was not filled after retries, cancel the last order
+            if order_id:
+                self.client.futures_cancel_order(symbol=symbol, orderId=order_id)
+                self.telegram.send_telegram_message(
+                    f"Failed to fill limit order after {max_retries} retries. Order canceled."
+                )
+            return None
+
+        except BinanceAPIException as e:
+            self.telegram.send_telegram_message(f"Error during limit order chasing: {e}")
+            return None
+    
+    def limit_order_chaser_async(self, *args, **kwargs):
+        """
+        Runs the limit order chaser in a separate thread.
+        Args:
+            *args, **kwargs: Arguments for the `limit_order_chaser_post_only` method.
+        """
+        return self.executor.submit(self.limit_order_chaser, *args, **kwargs)
+    
 
 
 

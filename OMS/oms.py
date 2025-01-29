@@ -1,4 +1,5 @@
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
 
 class OMS:
     def __init__(self):
@@ -7,6 +8,7 @@ class OMS:
         self.failed_orders = []
         self.current_balance = int()
         self.execution_queue = []
+        self.executor = ThreadPoolExecutor(max_workers=10)
 
     def add_to_queue(self, order_details):
         """

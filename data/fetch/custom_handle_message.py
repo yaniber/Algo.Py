@@ -257,65 +257,74 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
 
                     if pair == 'BTCUSDT':
                         top_pairs_dict['counter'] += 1
-                        if top_pairs_dict['counter'] > 10:
+                        if top_pairs_dict['counter'] > 5:
                             top_pairs_dict['counter'] = 0
                         
                         print(f"Counter Value : {top_pairs_dict['counter']}")
-                        if top_pairs_dict['counter'] == 1000:
+
+                        if top_pairs_dict['counter'] == 1:
                             
                             queue_entries = binance_client.get_all_from_queue()
                             # Sort entries by absolute r2p scores in descending order and keep only the top 10
                             if queue_entries:
-                                '''
-                                top_5_entries = sorted(queue_entries, key=lambda x: abs(x['r2p_score']), reverse=True)[:5]
 
-                                print(f"Processing top 10 entries: {top_10_entries}")
-
-                                # Process each of the top 10 entries
-                                for entry in top_10_entries:
-                                    symbol = entry['symbol']
-                                    r2p_score = entry['r2p_score']
-                                    close_price = entry['close_price']
-                                    side = 'buy' if r2p_score > 0 else 'sell'  # Determine side based on r2p
-
-                                    # Calculate the quantity
-                                    quantity = 50.0 / close_price
-
-                                    try:
-                                        # Change leverage and place the futures order
-                                        binance_client.change_leverage(symbol=symbol, leverage=10)
-                                        binance_client.place_futures_order(symbol=symbol, side=side, quantity=quantity)
-                                        print(f"Order placed for {symbol}: side={side}, quantity={quantity}, r2p_score={r2p_score}")
-
-                                        
-                                        #in case you want to trade pairs :
-                                        #binance_client.change_leverage(symbol='BTCUSDT', leverage=20)
-                                        #last_key = list(symbol_trade_data['BTCUSDT'].keys())[-1]
-                                        #previous_message = symbol_trade_data['BTCUSDT'][last_key]
-                                        #binance_client.place_futures_order(symbol='BTCUSDT', side='sell' if side == 'buy' else 'buy', quantity=50.0/float(previous_message['c']))
-                                        
-
-                                        # Add the symbol to an available slot in top_pairs_dict
-                                        for key, value in top_pairs_dict.items():
-                                            if key in ['counter', 'pnl']:
-                                                continue
-                                            if value['symbol'] == 'None':  # Find the first empty slot
-                                                top_pairs_dict[key] = {
-                                                    'symbol': symbol,
-                                                    'score': r2p_score,
-                                                    'close_price_buy': close_price,
-                                                    'keep_open': False
-                                                }
-                                                print(f"Added {symbol} to top_pairs_dict: {top_pairs_dict[key]}")
-                                                break
-                                    except Exception as e:
-                                        print(f"Failed to execute order for {symbol}: {e}")
-
-                                # Clear the queue after processing the top 10 entries
+                                if len(queue_entries) < 20: 
                                 
-                                binance_client.clear_queue()
-                                '''
-                                pass
+                                    top_5_entries = sorted(queue_entries, key=lambda x: abs(x['r2p_score']), reverse=True)[:5]
+
+                                    print(f"Processing top 10 entries: {top_5_entries}")
+
+                                    # Process each of the top 10 entries
+                                    for entry in top_5_entries:
+                                        symbol = entry['symbol']
+                                        r2p_score = entry['r2p_score']
+                                        close_price = entry['close_price']
+                                        side = 'buy' if r2p_score > 0 else 'sell'  # Determine side based on r2p
+
+                                        # Calculate the quantity
+                                        quantity = 25.0 / close_price
+
+                                        try:
+                                            # Change leverage and place the futures order
+                                            binance_client.change_leverage(symbol=symbol, leverage=10)
+                                            #binance_client.place_futures_order(symbol=symbol, side=side, quantity=quantity)
+                                            binance_client.limit_order_chaser_async(symbol=pair, side=side, size=quantity, max_retries=120, interval=2.0)
+                                            print(f"Order placed for {symbol}: side={side}, quantity={quantity}, r2p_score={r2p_score}")
+
+                                            
+                                            #in case you want to trade pairs :
+                                            #binance_client.change_leverage(symbol='BTCUSDT', leverage=20)
+                                            #last_key = list(symbol_trade_data['BTCUSDT'].keys())[-1]
+                                            #previous_message = symbol_trade_data['BTCUSDT'][last_key]
+                                            #binance_client.place_futures_order(symbol='BTCUSDT', side='sell' if side == 'buy' else 'buy', quantity=50.0/float(previous_message['c']))
+                                            
+
+                                            # Add the symbol to an available slot in top_pairs_dict
+                                            for key, value in top_pairs_dict.items():
+                                                if key in ['counter', 'pnl']:
+                                                    continue
+                                                if value['symbol'] == 'None':  # Find the first empty slot
+                                                    top_pairs_dict[key] = {
+                                                        'symbol': symbol,
+                                                        'score': r2p_score,
+                                                        'close_price_buy': close_price,
+                                                        'keep_open': False
+                                                    }
+                                                    print(f"Added {symbol} to top_pairs_dict: {top_pairs_dict[key]}")
+                                                    break
+                                        except Exception as e:
+                                            print(f"Failed to execute order for {symbol}: {e}")
+
+                                    # Clear the queue after processing the top 10 entries
+                                    
+                                    binance_client.clear_queue()
+                                    
+                                    #pass
+                                else:
+                                    print(f'Passing this iteration as more than 20 trades are present : {len(queue_entries)}')
+                                    binance_client.clear_queue()
+                            else:
+                                print(f'queue entries : {queue_entries}')
 
                     #print(f'New Received for : {pair} : {symbol_trade_data[pair]}')
                     data_dict = symbol_trade_data[pair]
@@ -335,31 +344,31 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
                     
                     #close_values = [float(value['c']) for value in data_dict.values()]
                     #close_values = close_values[-30:]
-                    alt_volumes_15 = alt_volumes[-20:-5]
+                    alt_volumes_15 = alt_volumes[-20:]
                     alt_volumes_5 = alt_volumes[-5:]
                     try:
-                        #volume_flag = True if (sum(alt_volumes_5) / len(alt_volumes_5)) > 2 * (sum(alt_volumes_15) / len(alt_volumes_15)) else False
-                        volume_flag = True
+                        volume_flag = True if (sum(alt_volumes_5) / len(alt_volumes_5)) > (sum(alt_volumes_15) / len(alt_volumes_15)) else False
+                        #volume_flag = True
                     except Exception as e:
                         print(e)
                         volume_flag = True
                     # The lookback period is 10 : 
-                    earlier_values = synthetic_close_values[-60:]
-                    recent_values = synthetic_close_values[-10:]
+                    #earlier_values = synthetic_close_values[-60:]
+                    #recent_values = synthetic_close_values[-10:]
 
-                    earlier_srp = slope_r2_product.SlopeR2Product(earlier_values)
-                    recent_srp = slope_r2_product.SlopeR2Product(recent_values)
+                    #earlier_srp = slope_r2_product.SlopeR2Product(earlier_values)
+                    #recent_srp = slope_r2_product.SlopeR2Product(recent_values)
 
-                    #synthetic_close_values = synthetic_close_values[-23:]
-                    #srp = slope_r2_product.SlopeR2Product(synthetic_close_values)
+                    synthetic_close_values = synthetic_close_values[-7:]
+                    srp = slope_r2_product.SlopeR2Product(synthetic_close_values)
                     try:
-                        r2p_earlier = earlier_srp.calc_slope_r2_product()
-                        r2p_recent = recent_srp.calc_slope_r2_product()
-                        r2p = 0.4 * r2p_earlier + 0.6 * r2p_recent
-                        #r2p = srp.calc_slope_r2_product()
-                        MIN_R2P = 0.7
+                        #r2p_earlier = earlier_srp.calc_slope_r2_product()
+                        #r2p_recent = recent_srp.calc_slope_r2_product()
+                        #r2p = 0.4 * r2p_earlier + 0.6 * r2p_recent
+                        r2p = srp.calc_slope_r2_product()
+                        MIN_R2P = 0.75
                         if running_trade:
-                            MIN_R2P = 0.6
+                            MIN_R2P = 0.5
                             volume_flag = True
                         if (abs(r2p) >= MIN_R2P) and volume_flag:
                             print(f'R 2 Product for pair : {pair} : {r2p} for timestamp : {message["T"]} for len : {len(synthetic_close_values)}')
@@ -371,7 +380,7 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
                                     queue_entries = binance_client.get_all_from_queue()
 
                                     # Sort entries by absolute r2p scores in descending order and keep only the top 10
-                                    if len(queue_entries) < 10:
+                                    if len(queue_entries) < 10000:
 
                                         binance_client.add_to_queue({
                                                         'symbol': pair,
@@ -381,13 +390,15 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
                                         
                                         side = 'buy' if r2p > 0 else 'sell'  # Determine side based on r2p
 
+                                        '''
                                         # Calculate the quantity
-                                        quantity = 10.0 / float(message['c'])
+                                        quantity = 30.0 / float(message['c'])
 
                                         try:
                                             # Change leverage and place the futures order
                                             binance_client.change_leverage(symbol=pair, leverage=10)
-                                            binance_client.place_futures_order(symbol=pair, side=side, quantity=quantity)
+                                            #binance_client.place_futures_order(symbol=pair, side=side, quantity=quantity)
+                                            binance_client.limit_order_chaser_async(symbol=pair, side=side, size=quantity, max_retries=120, interval=2.0)
                                             print(f"Order placed for {pair}: side={side}, quantity={quantity}, r2p_score={r2p}")
 
                                             # Add the symbol to an available slot in top_pairs_dict
@@ -405,6 +416,7 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
                                                     break
                                         except Exception as e:
                                             print(f"Failed to execute order for {pair}: {e}")
+                                        '''
                                         
 
 
@@ -426,7 +438,7 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
                                             print(f"\n\n\n\------ \nSymbol : {value['symbol']}\nScore : {value['score']}\n")
 
                             
-                            if top_pairs_dict['counter'] in [3, 5, 7]:
+                            if top_pairs_dict['counter'] in [3,4,5]:
                                 for key, value in list(top_pairs_dict.items()):  # Create a list to allow modification during iteration
                                     if (key == 'counter') or (key == 'pnl'):
                                         continue
@@ -435,24 +447,24 @@ async def kline_handle_message(pair, message, symbol_trade_data, top_pairs_dict,
                                         percent_change = ((float(message['c']) - value['close_price_buy']) /  value['close_price_buy'])*(100*(abs(r2p)/r2p))
                                         print(f'\n\n\n\nStill open position for : {pair}, percent_change : {percent_change}\n\n\n\n')
                                         side = 'buy' if abs(r2p)/r2p > 0 else 'sell'
-                                        binance_client.place_futures_order(symbol=pair, side=side, quantity=40, quantity_type='USD')
+                                        #binance_client.place_futures_order(symbol=pair, side=side, quantity=40, quantity_type='USD')
                                         top_pairs_dict[key]['keep_open'] = True
                         else:
-                            if top_pairs_dict['counter'] in [10]:
+                            if top_pairs_dict['counter'] in [5]:
                                 for key, value in list(top_pairs_dict.items()):  # Create a list to allow modification during iteration
                                     if (key == 'counter') or (key == 'pnl'):
                                         continue
                                     if value['symbol'] == pair:
                                         percent_change = ((float(message['c']) - value['close_price_buy']) /  value['close_price_buy'])*(100*(abs(r2p)/r2p))
-                                        print(f'\n\n\n\nClosing position for : {pair}, percent_change : {percent_change}\n\n\n\n')
+                                        print(f'\n\n\n\nClosing position for : {pair}, r2p : {r2p}, percent_change : {percent_change}\n\n\n\n')
 
                                         if len(symbol_trade_data[pair]) >= 5:
-                                            binance_client.close_futures_positions(symbol=pair)
+                                            binance_client.close_futures_positions(symbol=pair, use_chaser=True)
                                             if binance_client.get_all_from_queue():
                                                 binance_client.execution_queue.pop()
 
                                         top_pairs_dict[key] = {'symbol' : 'None', 'score': 0, 'close_price_buy': 0, 'keep_open' : False}
-                                        top_pairs_dict['pnl'] += percent_change
+                                        top_pairs_dict['pnl'] += (percent_change - 0.02) 
                                         print(f'\n\n\n\nPnL ::::::::: {top_pairs_dict["pnl"]}')
 
 

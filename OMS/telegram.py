@@ -16,6 +16,7 @@ import time
 class Telegram(OMS):
     
     def __init__(self, token: str = None, group_id: str = None, error_group_id: str = None):
+        super().__init__()
         if not token or not group_id:
             load_dotenv(dotenv_path='config/.env')
             self.token = os.getenv('TELEGRAM_TOKEN')
@@ -28,7 +29,6 @@ class Telegram(OMS):
             self.token = token
             self.group_id = group_id
         self.error_group_id = error_group_id
-        self.executor = ThreadPoolExecutor(max_workers=10)
     
     def send_telegram_message(self, message, group_id=None):
         if group_id is None:
