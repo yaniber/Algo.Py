@@ -24,7 +24,7 @@ def fake_websocket_handler():
 
             symbol_trade_data[symbol][timestamp] = {"r2p_score": score}
 
-        time.sleep(60)  # Simulating new data arriving every minute
+        time.sleep(1)  # Simulating new data arriving every minute
 
 # Run the WebSocket in a separate thread
 websocket_thread = threading.Thread(target=fake_websocket_handler, daemon=True)
