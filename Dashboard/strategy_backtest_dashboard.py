@@ -5,6 +5,20 @@ import datetime
 from datetime import date
 import pickle
 import time
+from finstore.finstore import Finstore
+
+
+@st.cache_resource
+def get_finstore_crypto(timeframe='4h'):
+    return Finstore(market_name='crypto_binance', timeframe=timeframe)
+
+@st.cache_resource
+def get_finstore_indian_equity(timeframe='1d'):
+    return Finstore(market_name='indian_equity', timeframe=timeframe)
+
+@st.cache_resource
+def get_finstore(market_name , timeframe, pair=''):
+    return Finstore(market_name=market_name, timeframe=timeframe, pair=pair)
 
 # ------------------------------------
 # Dummy Functions for Demonstration
@@ -13,7 +27,7 @@ import time
 def list_strategy_modules():
     """Return available strategy modules with their parameters"""
     return {
-        'EMA Crossover Strategy': get_signals,
+        'EMA Crossover Strategy': get_ema_signals_wrapper,
         'RSI Strategy': dummy_rsi_strategy,
         'MACD Strategy': dummy_macd_strategy
     }
@@ -27,6 +41,15 @@ def get_signals(ohlcv_data: pd.DataFrame,
     # Your actual implementation will go here
     return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
+def get_ema_signals_wrapper(ohlcv_data: pd.DataFrame, 
+                symbol_list: list, 
+                fast_ema_period: int = 10, 
+                slow_ema_period: int = 100):
+    """Sample strategy function"""
+    # Your actual implementation will go here
+    
+    return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
 def dummy_rsi_strategy(ohlcv_data, symbol_list, rsi_period=14, oversold=30, overbought=70):
     """Dummy RSI strategy"""
     return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -35,13 +58,76 @@ def dummy_macd_strategy(ohlcv_data, symbol_list, fast=12, slow=26, signal=9):
     """Dummy MACD strategy"""
     return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-def get_available_assets():
-    """Return hierarchical market structure"""
-    return {
-        'Crypto': ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'],
-        'US Market': ['AAPL', 'TSLA', 'NVDA', 'AMZN'],
-        'Indian Market': ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS']
-    }
+def get_available_assets(timeframe=None):
+    """Return hierarchical market structure with nested universes"""
+    asset_groups = {}
+    
+    if not timeframe:
+        return {'Please select timeframe first': []}
+
+    try:
+        # Get crypto pairs
+        btc_pairs = get_finstore("crypto_binance", timeframe, pair="BTC").read.get_symbol_list()
+        usdt_pairs = get_finstore("crypto_binance", timeframe, pair="USDT").read.get_symbol_list()
+        asset_groups['Crypto'] = {
+            'BTC Pairs': list(btc_pairs) if len(btc_pairs) > 0 else ['No BTC pairs'],
+            'USDT Pairs': list(usdt_pairs) if len(usdt_pairs) > 0 else ['No USDT pairs']
+        }
+    except Exception as e:
+        asset_groups['Crypto'] = {'Error': [f'Failed to load crypto data: {str(e)}']}
+
+    try:
+        # Indian equity with sub-universes
+        nse_eq = get_finstore("indian_equity", timeframe, pair="").read.get_symbol_list()
+        asset_groups['Indian Market'] = {
+            'NSE Equity': list(nse_eq) if len(nse_eq) > 0 else ['No NSE equities']
+        }
+    except Exception as e:
+        asset_groups['Indian Market'] = {'Error': [f'Failed to load Indian data: {str(e)}']}
+
+    # Add other markets
+    asset_groups.update({
+        'US Market': {
+            'NASDAQ': ['AAPL', 'TSLA', 'GOOG'],
+            'NYSE': ['IBM', 'BA']
+        },
+        'Commodities': {
+            'Metals': ['GOLD', 'SILVER'],
+            'Energy': ['OIL', 'NATURALGAS']
+        }
+    })
+    
+    return asset_groups
+
+def process_selected_assets(selections, timeframe):
+    """Convert user selections to final symbol list with nested universes"""
+    all_assets = get_available_assets(timeframe)
+    selected_symbols = []
+    
+    for selection in selections:
+        clean_selection = selection.replace(" ", "")
+        
+        # Handle nested universe selection (e.g., "Crypto/BTC Pairs (All)")
+        if '/ (All)' in clean_selection:
+            market_path = clean_selection.replace(' (All)', '').split('/')
+            current_level = all_assets
+            try:
+                for level in market_path:
+                    current_level = current_level[level.strip()]
+                # Flatten nested structure
+                symbols = []
+                for sub_level in current_level.values():
+                    symbols.extend(sub_level)
+                selected_symbols.extend(symbols)
+            except KeyError:
+                continue
+        
+        # Add individual symbols
+        elif '(All)' not in clean_selection:
+            selected_symbols.append(clean_selection)
+    
+    return list(set(selected_symbols))
+
 
 # ------------------------------------
 # Strategy Backtester Page
@@ -58,30 +144,54 @@ def show_backtester_page():
             options=list(strategy_modules.keys())
         )
     
-    # 2. Asset Selection
+    # 2. Asset Selection with nested universes
     with st.expander("🌍 Asset Selection", expanded=True):
-        market_data = get_available_assets()
-        
-        selected_symbols = []
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns([1, 3])
         
         with col1:
-            st.subheader("Crypto")
-            for sym in market_data['Crypto']:
-                if st.checkbox(sym, key=f"crypto_{sym}"):
-                    selected_symbols.append(sym)
+            # Timeframe selection
+            timeframe = st.selectbox(
+                "⏳ Timeframe:",
+                options=["1D", "4H", "1H", "15m", "5m", "1m"],
+                index=0
+            )
         
         with col2:
-            st.subheader("US Market")
-            for sym in market_data['US Market']:
-                if st.checkbox(sym, key=f"us_{sym}"):
-                    selected_symbols.append(sym)
-        
-        with col3:
-            st.subheader("Indian Market")
-            for sym in market_data['Indian Market']:
-                if st.checkbox(sym, key=f"in_{sym}"):
-                    selected_symbols.append(sym)
+            asset_groups = get_available_assets(timeframe)
+            all_options = []
+
+            # Build nested options
+            for market, submarkets in asset_groups.items():
+                # Add market-level universe
+                all_options.append(f"{market}/ (All)")
+                
+                for submarket, symbols in submarkets.items():
+                    # Add submarket-level universe
+                    all_options.append(f" {market}/{submarket} (All)")
+                    
+                    # Add individual symbols
+                    for sym in symbols:
+                        all_options.append(f"  {sym}")
+
+            # Multi-select with hierarchical indentation
+            selected = st.multiselect(
+                "Select assets/universe:",
+                options=all_options,
+                default=[],
+                format_func=lambda x: x.replace('/', ' ➔ '),
+                help="Select entire universes or individual assets"
+            )
+
+            # Process selections
+            final_symbols = process_selected_assets(selected, timeframe)
+    
+    # Display selected symbols
+    if final_symbols:
+        st.info(f"Selected {len(final_symbols)} assets: {', '.join(final_symbols[:3])}..."
+              f" (Timeframe: {timeframe})")
+    else:
+        st.error("Please select at least one asset universe or individual asset")
+
     
     # 3. Strategy Parameters
     with st.expander("⚙️ Strategy Parameters", expanded=True):
@@ -131,7 +241,7 @@ def show_backtester_page():
     
     # 5. Run Backtest
     if st.button("🚀 Run Backtest"):
-        if not selected_symbols:
+        if not final_symbols:
             st.error("Please select at least one asset!")
             return
         
