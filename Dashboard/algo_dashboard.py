@@ -1,107 +1,185 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import inspect
+import datetime
+from datetime import date
+import pickle
 import time
-from datetime import datetime
-
-# Import the shared data dictionary from the WebSocket simulation
-from fake_websocket import symbol_trade_data  # Ensure this is correctly imported
 
 # ------------------------------------
-# 1. Set Up Live Updates Without Full Page Refresh
+# Dummy Functions for Demonstration
 # ------------------------------------
-st.set_page_config(page_title="Live Strategy Monitor", layout="wide")
 
-# Initialize session state for live updates
-if "latest_scores" not in st.session_state:
-    st.session_state["latest_scores"] = {}
+def list_strategy_modules():
+    """Return available strategy modules with their parameters"""
+    return {
+        'EMA Crossover Strategy': get_signals,
+        'RSI Strategy': dummy_rsi_strategy,
+        'MACD Strategy': dummy_macd_strategy
+    }
 
-st.title("Live Strategy Monitor 📈")
+def get_signals(ohlcv_data: pd.DataFrame, 
+                symbol_list: list, 
+                weekday: int = 2, 
+                fast_ema_period: int = 10, 
+                slow_ema_period: int = 100):
+    """Sample strategy function"""
+    # Your actual implementation will go here
+    return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+def dummy_rsi_strategy(ohlcv_data, symbol_list, rsi_period=14, oversold=30, overbought=70):
+    """Dummy RSI strategy"""
+    return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+def dummy_macd_strategy(ohlcv_data, symbol_list, fast=12, slow=26, signal=9):
+    """Dummy MACD strategy"""
+    return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+def get_available_assets():
+    """Return hierarchical market structure"""
+    return {
+        'Crypto': ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'],
+        'US Market': ['AAPL', 'TSLA', 'NVDA', 'AMZN'],
+        'Indian Market': ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS']
+    }
 
 # ------------------------------------
-# 2. Fetch the Latest R2P Scores from the Simulated WebSocket
+# Strategy Backtester Page
 # ------------------------------------
-def get_latest_r2p_scores():
-    results = {}
-    for symbol, time_dict in symbol_trade_data.items():
-        if not time_dict:
-            continue
-        latest_timestamp = max(time_dict.keys())  # Get the latest timestamp for the symbol
-        latest_data = time_dict[latest_timestamp]
-        if "r2p_score" in latest_data:
-            results[symbol] = latest_data["r2p_score"]
-    return results
 
-# ------------------------------------
-# 3. Live Data Updating Every 2 Seconds
-# ------------------------------------
-placeholder = st.empty()  # Create a placeholder for dynamic updates
-
-while True:
-    latest_scores = get_latest_r2p_scores()
-    st.session_state["latest_scores"] = latest_scores  # Store the latest scores
-
-    with placeholder.container():
-        if not latest_scores:
-            st.write("No R2P data available yet.")
-        else:
-            # Create a DataFrame for the heatmap data (r2p scores)
-            df = pd.DataFrame(
-                [(symbol, score) for symbol, score in latest_scores.items()],
-                columns=["symbol", "r2p_score"]
+def show_backtester_page():
+    st.title("Strategy Backtester 🔧")
+    
+    # 1. Strategy Module Selection
+    with st.expander("📦 Strategy Module Selection", expanded=True):
+        strategy_modules = list_strategy_modules()
+        selected_module = st.selectbox(
+            "Select Strategy Module",
+            options=list(strategy_modules.keys())
+        )
+    
+    # 2. Asset Selection
+    with st.expander("🌍 Asset Selection", expanded=True):
+        market_data = get_available_assets()
+        
+        selected_symbols = []
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.subheader("Crypto")
+            for sym in market_data['Crypto']:
+                if st.checkbox(sym, key=f"crypto_{sym}"):
+                    selected_symbols.append(sym)
+        
+        with col2:
+            st.subheader("US Market")
+            for sym in market_data['US Market']:
+                if st.checkbox(sym, key=f"us_{sym}"):
+                    selected_symbols.append(sym)
+        
+        with col3:
+            st.subheader("Indian Market")
+            for sym in market_data['Indian Market']:
+                if st.checkbox(sym, key=f"in_{sym}"):
+                    selected_symbols.append(sym)
+    
+    # 3. Strategy Parameters
+    with st.expander("⚙️ Strategy Parameters", expanded=True):
+        strategy_func = strategy_modules[selected_module]
+        sig = inspect.signature(strategy_func)
+        params = {}
+        
+        # Skip first two parameters (ohlcv_data and symbol_list)
+        for param in list(sig.parameters.values())[2:]:
+            # Create input widgets based on parameter type
+            if param.annotation == int:
+                val = st.number_input(
+                    param.name,
+                    value=param.default if param.default != inspect.Parameter.empty else 0,
+                    step=1
+                )
+            elif param.annotation == float:
+                val = st.number_input(
+                    param.name,
+                    value=param.default if param.default != inspect.Parameter.empty else 0.0,
+                    step=0.1
+                )
+            else:
+                val = st.text_input(
+                    param.name,
+                    value=str(param.default) if param.default != inspect.Parameter.empty else ""
+                )
+            params[param.name] = val
+    
+    # 4. Backtest Configuration
+    with st.expander("📅 Backtest Settings", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input(
+                "Start Date",
+                value=date(2023, 1, 1)
             )
-            # Use the absolute r2p score as the value for the treemap
-            df["abs_r2p"] = df["r2p_score"].abs()
-            fig_treemap = px.treemap(
-                df,
-                path=["symbol"],
-                values="abs_r2p",
-                color="r2p_score",
-                color_continuous_scale="RdYlGn",
-                title="Live Model Confidence Score Heatmap"
+        with col2:
+            end_date = st.date_input(
+                "End Date",
+                value=date(2024, 1, 1)
             )
-            st.plotly_chart(fig_treemap, use_container_width=True)
+        
+        init_cash = st.number_input("Initial Capital", value=100000)
+        fees = st.number_input("Trading Fees (%)", value=0.1)
+        slippage = st.number_input("Slippage (%)", value=0.05)
+    
+    # 5. Run Backtest
+    if st.button("🚀 Run Backtest"):
+        if not selected_symbols:
+            st.error("Please select at least one asset!")
+            return
+        
+        # Mock progress and execution
+        with st.spinner("Running backtest..."):
+            progress_bar = st.progress(0)
+            
+            # Simulate strategy execution
+            for i in range(3):
+                time.sleep(0.5)
+                progress_bar.progress((i + 1) * 25)
+            
+            # Dummy data for demonstration
+            mock_results = pd.DataFrame({
+                'Metric': ['Total Return', 'Sharpe Ratio', 'Max Drawdown'],
+                'Value': ['+125.4%', '2.34', '-23.5%']
+            })
+            
+            # Mock portfolio object
+            mock_portfolio = {
+                'config': params,
+                'results': mock_results
+            }
+            
+            # Save mock portfolio
+            with open(f"backtest_{datetime.datetime.now().isoformat()}.pkl", "wb") as f:
+                pickle.dump(mock_portfolio, f)
+            
+            progress_bar.empty()
+            
+            # Display results
+            st.success("Backtest completed!")
+            
+            # Show basic metrics
+            st.subheader("📊 Performance Summary")
+            st.dataframe(mock_results)
+            
+            # Show mock equity curve
+            st.subheader("📈 Equity Curve")
+            num_days = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days + 1
+            mock_equity = pd.DataFrame({
+                'Date': pd.date_range(start=start_date, end=end_date),
+                'Value': [100000 + i*1000 for i in range(num_days)]
+            })
+            st.line_chart(mock_equity.set_index('Date'))
+            
+            # Show save location
+            st.info("Portfolio object saved to local storage")
 
-            # Display Top 5 symbols by r2p score
-            top5_df = df.sort_values("r2p_score", ascending=False).head(5)
-            st.subheader("Top 5 Confidence Scores 🔥")
-            st.table(top5_df)
-
-            # ------------------------------------
-            # 4. Live Charts for Top 5 Symbols: Plotting Close Values
-            # ------------------------------------
-            st.subheader("📊 Live Close Value Charts")
-
-            chart_placeholder = st.empty()  # Placeholder for live charts
-
-            with chart_placeholder.container():
-                for symbol in top5_df["symbol"]:
-                    historical_data = symbol_trade_data.get(symbol, {})
-
-                    if historical_data:
-                        # Sort the timestamps for chronological plotting
-                        timestamps = sorted(historical_data.keys())
-                        # Use close values for the line chart
-                        close_values = [historical_data[t]["close"] for t in timestamps]
-
-                        fig_line = go.Figure()
-                        fig_line.add_trace(go.Scatter(
-                            x=[pd.to_datetime(t, unit='ms') for t in timestamps],
-                            y=close_values,
-                            mode='lines+markers',
-                            name=symbol
-                        ))
-
-                        fig_line.update_layout(
-                            title=f"📈 Live Close Value for {symbol}",
-                            xaxis_title="Timestamp",
-                            yaxis_title="Close Value",
-                            xaxis=dict(showline=True, showgrid=False),
-                            yaxis=dict(showline=True, showgrid=True),
-                        )
-
-                        st.plotly_chart(fig_line, use_container_width=True)
-                    else:
-                        st.write(f"No historical data available for {symbol}.")
-    time.sleep(2)  # Update every 2 seconds
+# Run the page
+show_backtester_page()
