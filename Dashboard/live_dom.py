@@ -7,7 +7,7 @@ import asyncio
 import queue
 import time
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 import threading
 
@@ -17,28 +17,33 @@ TRADE_WS_URL = f"wss://fstream.binance.com/ws/{SYMBOL}@aggTrade"
 DEPTH_WS_URL = f"wss://fstream.binance.com/ws/{SYMBOL}@depth@100ms"
 BUFFER_SIZE = 2000
 UPDATE_INTERVAL = 0.5
+DOM_GRANULARITY = 10.0  # Price bin size in USDT
+BASE_RANGE = 0.1  # Percentage price range from current price
 
 # Thread-safe queues
 trade_queue = queue.Queue()
 depth_queue = queue.Queue()
 
 def init_session_state():
-    if "trades" not in st.session_state:
-        st.session_state.trades = pd.DataFrame(columns=['time', 'price', 'quantity', 'direction'])
-    if "order_book" not in st.session_state:
-        st.session_state.order_book = {'bids': pd.DataFrame(columns=['price', 'quantity']),
-                                      'asks': pd.DataFrame(columns=['price', 'quantity'])}
-    if "last_update" not in st.session_state:
-        st.session_state.last_update = time.time()
+    session_keys = {
+        "trades": pd.DataFrame(columns=['time', 'price', 'quantity', 'direction']),
+        "order_book": defaultdict(float),
+        "last_update": time.time(),
+        "current_price": None,
+        "time_range": [datetime.now() - timedelta(minutes=1), datetime.now()],
+        "price_range": [0, 0],
+        "ws_thread": None
+    }
+    for key, val in session_keys.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
 
 init_session_state()
 
 async def binance_websocket():
-    # Connect to both trade and depth streams
     async with websockets.connect(TRADE_WS_URL) as trade_ws, \
               websockets.connect(DEPTH_WS_URL) as depth_ws:
         
-        # Create separate tasks for each stream
         async def handle_trades():
             async for message in trade_ws:
                 trade_queue.put(message)
@@ -60,18 +65,22 @@ def process_trade_message(msg):
 
 def process_depth_message(msg):
     data = json.loads(msg)
-    return {
-        'bids': pd.DataFrame([[float(p), float(q)] for p, q in data.get('b', [])], columns=['price', 'quantity']),
-        'asks': pd.DataFrame([[float(p), float(q)] for p, q in data.get('a', [])], columns=['price', 'quantity'])
-    }
+    book = defaultdict(float)
+    for p, q in data.get('b', []):
+        price_level = round(float(p)/DOM_GRANULARITY)*DOM_GRANULARITY
+        book[price_level] += float(q)
+    for p, q in data.get('a', []):
+        price_level = round(float(p)/DOM_GRANULARITY)*DOM_GRANULARITY
+        book[price_level] += float(q)
+    return book
 
 def start_websocket():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(binance_websocket())
 
-# Start WebSocket thread
-if not hasattr(st.session_state, 'ws_thread'):
+# Start WebSocket thread once
+if st.session_state.ws_thread is None or not st.session_state.ws_thread.is_alive():
     st.session_state.ws_thread = threading.Thread(target=start_websocket, daemon=True)
     st.session_state.ws_thread.start()
 
@@ -82,121 +91,142 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Main interface
-main_col, dom_col = st.columns([4, 1])
-
-with main_col:
-    st.header("Price & Volume")
-    chart_placeholder = st.empty()
-
-with dom_col:
-    st.header("Order Book Depth")
-    dom_placeholder = st.empty()
-
 # Control panel
 with st.sidebar:
-    with st.expander("Settings", expanded=True):
-        bubble_scale = st.slider("Bubble Size", 1, 20, 10)
-        dom_range = st.slider("DOM Range (%)", 0.1, 5.0, 1.0)
+    with st.expander("⚙️ Settings", expanded=True):
+        bubble_scale = st.slider("Bubble Size", 1, 20, 12)
+        dom_opacity = st.slider("Order Block Opacity", 0.1, 1.0, 0.8)
+        #base_range = st.slider("Price Range (%)", 0.1, 5.0, 1.0)
         theme = st.selectbox("Theme", ['Dark', 'Light'])
+
+# Main interface
+main_col = st.columns(1)[0]
+with main_col:
+    st.header("₿ BTC/USDT Real-Time Trading View")
+    chart_placeholder = st.empty()
 
 # Main update loop
 while True:
-    # Process trade messages
-    while not trade_queue.empty():
-        try:
+    # Process trades
+    try:
+        while not trade_queue.empty():
             trade = process_trade_message(trade_queue.get_nowait())
             new_row = pd.DataFrame([trade])
             st.session_state.trades = pd.concat([st.session_state.trades, new_row]).iloc[-BUFFER_SIZE:]
-        except queue.Empty:
-            break
+            st.session_state.current_price = trade['price']
+            # Update time range
+            st.session_state.time_range[1] = datetime.now()
+    except queue.Empty:
+        pass
 
-    # Process depth messages
-    while not depth_queue.empty():
-        try:
+    # Process depth
+    try:
+        while not depth_queue.empty():
             depth = process_depth_message(depth_queue.get_nowait())
-            st.session_state.order_book['bids'] = depth['bids'].sort_values('price', ascending=False)
-            st.session_state.order_book['asks'] = depth['asks'].sort_values('price')
-        except queue.Empty:
-            break
+            for price, volume in depth.items():
+                st.session_state.order_book[price] = volume
+    except queue.Empty:
+        pass
 
     # Update display
     if time.time() - st.session_state.last_update > UPDATE_INTERVAL:
-        # Prepare main chart
         fig = go.Figure()
         
-        # Add trades if available
+        # Add order blocks
+        if st.session_state.current_price:
+            current_price = st.session_state.current_price
+            price_range = current_price * BASE_RANGE / 100
+            min_price = current_price - price_range
+            max_price = current_price + price_range
+            st.session_state.price_range = [min_price, max_price]
+            
+            # Get DOM levels in range
+            dom_levels = sorted(
+                [(p, v) for p, v in st.session_state.order_book.items() 
+                 if min_price <= p <= max_price],
+                key=lambda x: x[0]
+            )
+            
+            # Create enhanced order blocks
+            shapes = []
+            if dom_levels:
+                max_volume = max(v for _, v in dom_levels)
+                for price, volume in dom_levels:
+                    intensity = np.log(volume + 1) / np.log(max_volume + 1)
+                    alpha = max(min(intensity * dom_opacity, 1.0), 0.3)
+                    fillcolor = f'rgba(255,165,0,{alpha:.2f})'
+                    
+                    shapes.append({
+                        'type': 'rect',
+                        'xref': 'x',
+                        'yref': 'y',
+                        'x0': st.session_state.time_range[0],
+                        'x1': st.session_state.time_range[1],
+                        'y0': price - DOM_GRANULARITY/2,
+                        'y1': price + DOM_GRANULARITY/2,
+                        'fillcolor': fillcolor,
+                        'line': {'width': 0},
+                        'layer': 'below'
+                    })
+            
+            fig.update_layout(shapes=shapes)
+        
+        # Add price bubbles with trend line
         if not st.session_state.trades.empty:
             df = st.session_state.trades
+            
+            # Add trend line
+            fig.add_trace(go.Scattergl(
+                x=df['time'],
+                y=df['price'],
+                mode='lines',
+                line=dict(color='#00FF00', width=1),
+                name='Price Trend'
+            ))
+            
+            # Add trade markers
             fig.add_trace(go.Scattergl(
                 x=df['time'],
                 y=df['price'],
                 mode='markers',
                 marker=dict(
                     size=np.sqrt(df['quantity']) * bubble_scale,
-                    color=np.where(df['direction'] == 'BUY', '#00C800', '#FF0000'),
-                    opacity=0.7
+                    color=np.where(df['direction'] == 'BUY', 'rgba(0,200,0,0.8)', 'rgba(255,0,0,0.8)'),
+                    line=dict(width=1, color='rgba(0,0,0,0.5)')
                 ),
                 name='Trades'
             ))
         
-        # Configure chart layout
+        # Configure layout
         fig.update_layout(
-            height=800,
+            height=600,
             margin=dict(l=20, r=20, t=40, b=20),
-            plot_bgcolor='#111111' if theme == 'Dark' else '#FFFFFF',
-            paper_bgcolor='#111111' if theme == 'Dark' else '#FFFFFF',
+            plot_bgcolor='rgb(17,17,17)' if theme == 'Dark' else 'white',
+            paper_bgcolor='rgb(17,17,17)' if theme == 'Dark' else 'white',
             font=dict(color='white' if theme == 'Dark' else 'black'),
-            showlegend=False
+            xaxis=dict(
+                title='Time',
+                range=st.session_state.time_range,
+                rangeselector=dict(buttons=list([
+                    dict(count=5, label="5m", step="minute", stepmode="backward"),
+                    dict(count=1, label="1H", step="hour", stepmode="backward"),
+                    dict(step="all")
+                ]))
+            ),
+            yaxis=dict(
+                title='Price (USDT)',
+                range=st.session_state.price_range,
+                fixedrange=False,
+                tickformat=".2f"
+            )
         )
         
-        # Update DOM display
-        dom_fig = go.Figure()
-        if not st.session_state.order_book['bids'].empty:
-            current_price = df['price'].iloc[-1] if not df.empty else 0
-            price_range = current_price * dom_range / 100
-            
-            bids = st.session_state.order_book['bids']
-            bids = bids[bids['price'] >= (current_price - price_range)]
-            dom_fig.add_trace(go.Bar(
-                x=bids['quantity'],
-                y=bids['price'].astype(str),
-                orientation='h',
-                marker_color='#00C800',
-                name='Bids'
-            ))
-            
-            asks = st.session_state.order_book['asks']
-            asks = asks[asks['price'] <= (current_price + price_range)]
-            dom_fig.add_trace(go.Bar(
-                x=asks['quantity'],
-                y=asks['price'].astype(str),
-                orientation='h',
-                marker_color='#FF0000',
-                name='Asks'
-            ))
-        
-        dom_fig.update_layout(
-            height=800,
-            margin=dict(l=20, r=20, t=40, b=20),
-            plot_bgcolor='#111111' if theme == 'Dark' else '#FFFFFF',
-            paper_bgcolor='#111111' if theme == 'Dark' else '#FFFFFF',
-            showlegend=False
-        )
-
-        # Update displays
+        # Update chart
         with main_col:
             chart_placeholder.plotly_chart(
                 fig, 
                 use_container_width=True,
-                key=f"main_chart_{time.time()}"  # Unique key with timestamp
-            )
-
-        with dom_col:
-            dom_placeholder.plotly_chart(
-                dom_fig,
-                use_container_width=True,
-                key=f"dom_chart_{time.time()}"  # Unique key with timestamp
+                key=f"main_chart_{time.time()}"
             )
         
         st.session_state.last_update = time.time()
