@@ -54,8 +54,8 @@ class OrderFlowChart():
         df['sum'] = df['bid_size'] + df['ask_size']
         df['time'] = df.index.astype(str)
         bids, asks = [], []
-        for b, a in zip(df['bid_size'].astype(int).astype(str),
-                        df['ask_size'].astype(int).astype(str)):
+        for b, a in zip(df['bid_size'].astype(float).round(4).astype(str),
+                df['ask_size'].astype(float).round(4).astype(str)):
             dif = 4 - len(a)
             a = a + (' ' * dif)
             dif = 4 - len(b)
@@ -139,12 +139,21 @@ class OrderFlowChart():
         return labels
 
     def plot_ranges(self, ohlc):
-        ymin = ohlc['high'][-1] + 1
-        ymax = ymin - int(48*self.granularity)
+        # Get full min and max across all candles
+        _ymax = ohlc['high'].max()
+        _ymin = ohlc['low'].min()
+
+        # Optionally add a small % buffer
+        buffer = (_ymax - _ymin) * 0.02
+        ymax = _ymax + buffer
+        ymin = _ymin - buffer
+
         xmax = ohlc.shape[0]
-        xmin = xmax - 9
+        xmin = max(0, xmax - 9)  # keep 9 visible candles in x range if you like
+
         tickvals = list(ohlc['identifier'])
         ticktext = list(ohlc.index)
+
         return ymin, ymax, xmin, xmax, tickvals, ticktext
 
     def process_data(self):
@@ -210,8 +219,9 @@ class OrderFlowChart():
                 showlegend=True,
                 name='BidAsk',
                 texttemplate="%{text}",
-                textfont={"size": 11, "family": "Courier New"},
+                textfont={"size": 8, "family": "Courier New"},
                 hovertemplate="Price: %{y}<br>Size: %{text}<br>Imbalance: %{z}<extra></extra>",
+                #xgap= 1200 / max(1, len(self.ohlc_data))
                 xgap=60
             ),
             row=1, col=1)
@@ -224,7 +234,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=True,
-                line=dict(color='green', width=1.5)
+                line=dict(color='red', width=1.5)
             ),
             row=1, col=1)
 
@@ -235,7 +245,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=False,
-                line=dict(color='red', width=1.5)
+                line=dict(color='green', width=1.5)
             ),
             row=1, col=1)
 
@@ -247,7 +257,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=False,
-                line=dict(color='green', width=6)
+                line=dict(color='red', width=6)
             ),
             row=1, col=1)
 
@@ -258,7 +268,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=False,
-                line=dict(color='red', width=6)
+                line=dict(color='green', width=6)
             ),
             row=1, col=1)
 
@@ -288,7 +298,7 @@ class OrderFlowChart():
             yaxis2=dict(fixedrange=True, showgrid=False),
             xaxis2=dict(title='Time', showgrid=False),
             xaxis=dict(showgrid=False, range=[xmin, xmax]),
-            height=600,
+            height=750,
             template='plotly_dark',
             paper_bgcolor='#222',
             plot_bgcolor='#222',
@@ -348,7 +358,7 @@ def get_minute_floor(timestamp_ms: int) -> datetime.datetime:
     """
     Convert Binance trade timestamp to a Python datetime minute.
     """
-    dt = datetime.datetime.utcfromtimestamp(timestamp_ms / 1000.0)
+    dt = datetime.datetime.fromtimestamp(timestamp_ms / 1000.0, tz=datetime.UTC)
     return dt.replace(second=0, microsecond=0)
 
 # We'll store live data in memory for the last X minutes
@@ -363,25 +373,24 @@ def get_minute_floor(timestamp_ms: int) -> datetime.datetime:
 # }
 
 def build_or_update_candle(candle, price, qty, is_sell_side):
-    """
-    Update a single candle dict with a trade.
-    """
-    if candle['open'] is None:
-        candle['open'] = price
-        candle['high'] = price
-        candle['low']  = price
-        candle['close'] = price
-    else:
-        candle['high'] = max(candle['high'], price)
-        candle['low']  = min(candle['low'], price)
-        candle['close'] = price
+    # 1) Decide a bin size, e.g. $1 or $5 or $0.5
+    #    For large BTC price, you might do $1 or $5 increments
+    bin_size = 10.0
+    price_bin = round(price / bin_size) * bin_size  # e.g. round to nearest $1
 
-    # Accumulate volume by price
-    # For a real footprint, we might store raw float prices, or you can do rounding.
-    # Here we use the raw float price as the dictionary key (careful with too many levels).
+    # Then store price_bin instead of raw price
+    if candle['open'] is None:
+        candle['open'] = price_bin
+        candle['high'] = price_bin
+        candle['low']  = price_bin
+        candle['close'] = price_bin
+    else:
+        candle['high'] = max(candle['high'], price_bin)
+        candle['low']  = min(candle['low'],  price_bin)
+        candle['close'] = price_bin
+
     side_dict = candle['bid_size'] if is_sell_side else candle['ask_size']
-    rounded_price = round(price, 1)  # or to the nearest 0.5, etc.
-    side_dict[rounded_price] = side_dict.get(rounded_price, 0.0) + qty
+    side_dict[price_bin] = side_dict.get(price_bin, 0.0) + qty
 
 def convert_to_ohlc_and_orderflow(candle_map):
     """
@@ -466,10 +475,10 @@ def start_websocket_thread(trade_queue: queue.Queue):
 ###############################################
 def main():
     st.set_page_config(page_title="Live Binance Footprint Chart", layout="wide")
-    st.title("BTC/USDT Footprint Chart - Live from Binance")
+    #st.title("BTC/USDT Footprint Chart - Live from Binance")
 
     # Controls
-    lookback_minutes = st.sidebar.slider("Lookback (minutes)", 5, 60, 15, 1)
+    #lookback_minutes = st.sidebar.slider("Lookback (minutes)", 2, 60, 30, 1)
 
     # Our in-memory candle map
     # candle_map[minute_dt] = { 'open', 'high', 'low', 'close',
@@ -521,11 +530,14 @@ def main():
             )
 
         # 2. Prune old candles beyond the lookback
-        now_utc = datetime.datetime.utcnow().replace(second=0, microsecond=0)
+        lookback_minutes = 10
+        now_utc = datetime.datetime.now(datetime.UTC).replace(second=0, microsecond=0)
         cutoff = now_utc - datetime.timedelta(minutes=lookback_minutes)
+
         st.session_state['candle_map'] = {
             k: v for k, v in st.session_state['candle_map'].items() if k >= cutoff
         }
+
 
         # 3. Convert to DataFrames in the format that `OrderFlowChart` expects
         if st.session_state['candle_map']:
