@@ -222,7 +222,7 @@ class OrderFlowChart():
                 textfont={"size": 8, "family": "Courier New"},
                 hovertemplate="Price: %{y}<br>Size: %{text}<br>Imbalance: %{z}<extra></extra>",
                 #xgap= 1200 / max(1, len(self.ohlc_data))
-                xgap=60
+                xgap=70
             ),
             row=1, col=1)
 
@@ -234,7 +234,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=True,
-                line=dict(color='red', width=1.5)
+                line=dict(color='green', width=1.5)
             ),
             row=1, col=1)
 
@@ -245,7 +245,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=False,
-                line=dict(color='green', width=1.5)
+                line=dict(color='red', width=1.5)
             ),
             row=1, col=1)
 
@@ -257,7 +257,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=False,
-                line=dict(color='red', width=6)
+                line=dict(color='green', width=6)
             ),
             row=1, col=1)
 
@@ -268,7 +268,7 @@ class OrderFlowChart():
                 name='Candle',
                 legendgroup='group',
                 showlegend=False,
-                line=dict(color='green', width=6)
+                line=dict(color='red', width=6)
             ),
             row=1, col=1)
 
@@ -294,7 +294,7 @@ class OrderFlowChart():
         # Layout
         fig.update_layout(
             title='Order Book Chart (Live from Binance)',
-            yaxis=dict(title='Price', showgrid=False, range=[ymax, ymin], tickformat='.2f'),
+            yaxis=dict(title='Price', showgrid=False, range=[ymin, ymax], tickformat='.2f'),
             yaxis2=dict(fixedrange=True, showgrid=False),
             xaxis2=dict(title='Time', showgrid=False),
             xaxis=dict(showgrid=False, range=[xmin, xmax]),
