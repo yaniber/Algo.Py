@@ -13,7 +13,7 @@ def initialize_binance():
 
 # Page configuration
 st.set_page_config(
-    page_title="OMS Dashboard",
+    page_title="Custom Trading Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -24,7 +24,7 @@ def sidebar_controls():
         st.header("Exchange Configuration")
         exchange = st.selectbox(
             "Select Exchange",
-            ["Binance", "Other Exchanges..."],  # Add more exchanges as needed
+            ["Binance", "Other Exchanges..."],
             index=0
         )
         
@@ -39,7 +39,7 @@ def sidebar_controls():
             
         return exchange, market_type
 
-# Main order form
+# Main order form with limit order chaser
 def order_entry(binance_oms, market_type):
     with st.expander("📝 Order Entry", expanded=True):
         with st.form("order_form"):
@@ -56,8 +56,11 @@ def order_entry(binance_oms, market_type):
             with col3:
                 if order_type == "LIMIT":
                     price = st.number_input("Price", min_value=0.0, value=0.0)
+                    use_chaser = st.checkbox("Use Limit Order Chaser", 
+                                           help="Dynamically adjust limit order price to improve fill chances")
                 else:
                     price = None
+                    use_chaser = False
                     
                 if market_type == "Futures":
                     quantity_type = st.radio("Quantity Type", ["CONTRACTS", "USD"], horizontal=True)
@@ -75,33 +78,51 @@ def order_entry(binance_oms, market_type):
             
             if submit_order:
                 try:
-                    if market_type == "Futures":
-                        # Handle futures order
-                        result = binance_oms.place_futures_order(
-                            symbol=symbol,
-                            side=side,
-                            quantity=quantity,
-                            price=price if order_type == "LIMIT" else None,
-                            order_type=order_type,
-                            quantity_type=quantity_type
-                        )
-                        if leverage:
-                            binance_oms.change_leverage(symbol, leverage)
+                    if use_chaser and order_type == "LIMIT":
+                        # Use limit order chaser
+                        chaser_params = {
+                            'symbol': symbol,
+                            'side': side,
+                            'size': quantity,
+                            'max_retries': 20,
+                            'interval': 0.5,
+                            'reduceOnly': False
+                        }
+                        if market_type == "Futures":
+                            result = binance_oms.limit_order_chaser_async(**chaser_params)
+                        else:
+                            # For spot markets (would need spot implementation in OMS)
+                            result = binance_oms.limit_order_chaser_async(**chaser_params)
+                        
+                        st.success("Limit order chaser activated!")
+                        st.write("Tracking order execution...")
                     else:
-                        # Handle spot order
-                        result = binance_oms.place_order(
-                            symbol=symbol,
-                            side=side,
-                            size=quantity,
-                            price=price if order_type == "LIMIT" else None,
-                            order_type=order_type
-                        )
-                    
-                    if result:
-                        st.success("Order placed successfully!")
-                        st.json(result)
-                    else:
-                        st.error("Failed to place order")
+                        # Regular order placement
+                        if market_type == "Futures":
+                            result = binance_oms.place_futures_order(
+                                symbol=symbol,
+                                side=side,
+                                quantity=quantity,
+                                price=price if order_type == "LIMIT" else None,
+                                order_type=order_type,
+                                quantity_type=quantity_type
+                            )
+                            if leverage:
+                                binance_oms.change_leverage(symbol, leverage)
+                        else:
+                            result = binance_oms.place_order(
+                                symbol=symbol,
+                                side=side,
+                                size=quantity,
+                                price=price if order_type == "LIMIT" else None,
+                                order_type=order_type
+                            )
+                        
+                        if result:
+                            st.success("Order placed successfully!")
+                            st.json(result)
+                        else:
+                            st.error("Failed to place order")
                         
                 except Exception as e:
                     st.error(f"Order failed: {str(e)}")
@@ -150,33 +171,44 @@ def position_management(binance_oms):
                         st.error(f"Leverage change failed: {str(e)}")
 
 # Account information
-def account_info(binance_oms):
+def account_info(binance_oms, market_type):
     with st.expander("💼 Account Overview"):
         col1, col2, col3 = st.columns(3)
         
         with col1:
             if st.button("Show Balance"):
-                balance = binance_oms.get_available_balance("USDT")
-                st.metric("USDT Balance", f"{float(balance['free']):,.2f}")
+                if market_type == "Futures":
+                    balance = binance_oms.get_futures_balance("USDT")
+                    if balance:
+                        st.metric("Futures USDT Balance", 
+                                f"{balance['available']:,.2f} / {balance['total']:,.2f}",
+                                help="Available / Total Balance")
+                else:
+                    balance = binance_oms.get_available_balance("USDT")
+                    if balance:
+                        st.metric("Spot USDT Balance", f"{float(balance['free']):,.2f}")
         
         with col2:
             if st.button("Show Positions"):
-                positions = binance_oms.view_open_futures_positions()
-                if not positions.empty:
-                    st.dataframe(positions, use_container_width=True)
+                if market_type == "Futures":
+                    positions = binance_oms.view_open_futures_positions()
+                    if not positions.empty:
+                        st.dataframe(positions.style.highlight_max(axis=0), use_container_width=True)
+                    else:
+                        st.info("No open futures positions")
                 else:
-                    st.info("No open positions")
+                    st.info("Position tracking only available for Futures")
         
         with col3:
             if st.button("Show Order History"):
                 st.write("Successful Orders:")
-                st.write(binance_oms.successful_orders[-5:])  # Show last 5 orders
+                st.write(binance_oms.successful_orders[-5:])
                 st.write("Failed Orders:")
                 st.write(binance_oms.failed_orders[-5:])
 
 # Main app
 def main():
-    st.title("🚀 Order Management Dashboard")
+    st.title("🚀 Custom Trading Dashboard")
     
     # Initialize Binance OMS
     binance_oms = initialize_binance()
@@ -195,7 +227,7 @@ def main():
         position_management(binance_oms)
     
     with col2:
-        account_info(binance_oms)
+        account_info(binance_oms, market_type)  # Pass market_type here
     
     # System messages
     with st.expander("📢 System Messages"):

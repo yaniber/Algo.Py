@@ -133,7 +133,42 @@ class Zerodha(OMS):
         pass 
     
     def get_positions(self):
-        pass 
+        try:
+            # Fetch positions
+            positions = self.kite.positions()["net"]
+            positions_df = pd.DataFrame(positions)
+
+            if not positions_df.empty:
+                positions_df = positions_df[["tradingsymbol", "quantity", "average_price", "last_price", "pnl"]]
+                positions_df.rename(columns={
+                    "tradingsymbol": "Symbol",
+                    "quantity": "Size",
+                    "average_price": "Entry Price",
+                    "last_price": "Mark Price",
+                    "pnl": "PnL"
+                }, inplace=True)
+
+            # Fetch holdings
+            holdings = self.kite.holdings()
+            holdings_df = pd.DataFrame(holdings)
+
+            if not holdings_df.empty:
+                holdings_df = holdings_df[["tradingsymbol", "quantity", "average_price", "last_price", "pnl"]]
+                holdings_df.rename(columns={
+                    "tradingsymbol": "Symbol",
+                    "quantity": "Size",
+                    "average_price": "Entry Price",
+                    "last_price": "Mark Price",
+                    "pnl": "PnL"
+                }, inplace=True)
+
+            return {"positions": positions_df, "holdings": holdings_df}
+
+        except Exception as e:
+            self.telegram.send_telegram_message(f"Failed to fetch positions and holdings: {e}")
+            print(f"Failed to fetch positions and holdings: {e}")
+            return {"positions": pd.DataFrame(), "holdings": pd.DataFrame()}
+
     
     def get_pnl(self):
         pass 
@@ -148,7 +183,8 @@ class Zerodha(OMS):
 if __name__ == '__main__':
     zerodha = Zerodha()
     print(zerodha.get_available_balance())
-    zerodha2 = Zerodha()
-    print(zerodha2.get_available_balance())
+    #zerodha2 = Zerodha()
+    #print(zerodha2.get_available_balance())
+    print(zerodha.get_positions())
     
     
