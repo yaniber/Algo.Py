@@ -23,18 +23,18 @@ def run_in_thread(job_func):
 def _4h_momentum_bot():
     print("4h momentum bot started")
     
-    fill_gap(market_name='crypto_binance', timeframe='4h', pair='BTC')
+    #fill_gap(market_name='crypto_binance', timeframe='4h', pair='BTC')
     try: 
         ohlcv_data = fetch_entries(market_name='crypto_binance', timeframe='4h', all_entries=True, pair='BTC')
         print(ohlcv_data['ETH/BTC']['timestamp'].max())
         crypto_sotm = CryptoSOTM()
-        top_n_rising_symbols = crypto_sotm.get_top_n_symbols(ohlcv_data, n=10, r2_period=90, rising_only=True)
+        top_n_rising_symbols = crypto_sotm.get_top_n_symbols(ohlcv_data, n=10, r2_period=90)
         print(top_n_rising_symbols)
-        telegram_message_rising = crypto_sotm.get_top_n_pairs_message(top_n_rising_symbols, n=10, rising=True)
+        telegram_message_rising = crypto_sotm.get_top_n_pairs_message(top_n_rising_symbols, n=10)
 
-        top_n_symbols = crypto_sotm.get_top_n_symbols(ohlcv_data, n=10, r2_period=90, rising_only=False)
+        top_n_symbols = crypto_sotm.get_top_n_symbols(ohlcv_data, n=10, r2_period=90)
         print(top_n_symbols)
-        telegram_message = crypto_sotm.get_top_n_pairs_message(top_n_symbols, n=10, rising=False)
+        telegram_message = crypto_sotm.get_top_n_pairs_message(top_n_symbols, n=10)
 
         import json
         from dotenv import load_dotenv
