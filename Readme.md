@@ -1,4 +1,3 @@
-# 📌 **QuantiPy**
 <img src="https://raw.githubusercontent.com/himanshu2406/QuantiPy/175c0b959180d2f26c4b6854fdd3ba032ad27d91/assets/header_grad.svg" width="100%">
 
 **An advanced quantitative trading library for Python.** 🔥  
