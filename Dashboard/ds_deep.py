@@ -1,11 +1,3 @@
-'''
-Issues : 
-[2025-02-11 21:59:57] OHLCV data fetched.
-[2025-02-11 21:59:57] Generating signals using strategy...
-[2025-02-11 21:59:57] Strategy signals generated.
-[2025-02-11 21:59:57] Error during deployment cycle: 'oms_instance'
-'''
-
 import streamlit as st
 import multiprocessing
 import time
@@ -19,7 +11,6 @@ import os
 import json
 import signal
 from dotenv import load_dotenv
-from functools import partial
 
 # ---------------------------
 # Setup persistent storage paths
@@ -227,6 +218,8 @@ def deployment_runner_process(deployment_id, config):
     This function runs in a separate process. It writes logs to a file.
     It uses schedule to run the deployment cycle periodically.
     """
+    from executor.monitor import TradeMonitor
+    import vectorbtpro as vbt
     append_log(deployment_id, f"Deployment {deployment_id} started with config: {config}")
 
     def scheduled_job():
@@ -265,13 +258,17 @@ def deployment_runner_process(deployment_id, config):
             entries, exits, close_data, open_data = strategy_func(ohlcv_data, asset_universe, **strategy_params)
             append_log(deployment_id, "Strategy signals generated.")
 
+            fresh_entries, fresh_exits = entry_generator(entries, exits, close_data, open_data, deployment_id, size=0.01)
+
             # Step 4: Order placement via OMS
             oms = config["oms_instance"]
             append_log(deployment_id, f"Placing orders via OMS: {config['oms_type']}...")
             if config["oms_type"] == "Telegram":
                 message = (f"Deployment {deployment_id} orders summary:\n"
                            f"Entries count: {entries.sum().sum()}\n"
-                           f"Exits count: {exits.sum().sum()}")
+                           f"Exits count: {exits.sum().sum()}\n"
+                           f"fresh_entries : {fresh_entries}\n"
+                           f"fresh_exits : {fresh_exits}")
                 oms.send_telegram_message(message)
                 append_log(deployment_id, f"Telegram message sent: {message}")
             elif config["oms_type"] == "Zerodha":
@@ -290,6 +287,32 @@ def deployment_runner_process(deployment_id, config):
         except Exception as e:
             append_log(deployment_id, f"Error during deployment cycle: {str(e)}")
 
+    def entry_generator(entries, exits, close_data, open_data, deployment_id, size=1, sim_start=pd.to_datetime('2025-02-01'), sim_end=pd.Timestamp.now().strftime('%Y-%m-%d 00:00:00'), init_cash=10000):
+        trade_monitor = TradeMonitor(storage_file=f'database/db/{deployment_id}.parquet')
+        
+        pf = vbt.Portfolio.from_signals(
+            close=close_data,
+            entries=entries,
+            exits=exits,
+            direction='longonly',
+            init_cash=init_cash,
+            cash_sharing=True,
+            size=size,
+            size_type="valuepercent",
+            fees=0.0005,
+            slippage=0.001,
+            allow_partial=False,
+            size_granularity=1.0,
+            sim_start=sim_start,
+            sim_end=sim_end,
+        )
+
+        trade_history = pf.trade_history
+
+        fresh_buys, fresh_sells = trade_monitor.monitor_fresh_trades(trade_history)
+
+        return fresh_buys, fresh_sells
+    
     # Setup scheduling based on configuration
     scheduler_type = config.get("scheduler_type", "fixed_interval")
     if scheduler_type == "fixed_interval":
