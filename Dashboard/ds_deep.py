@@ -550,17 +550,29 @@ def main():
                 
                 except Exception as e:
                     st.error(f"Deployment failed: {str(e)}")
+    
+        # Live Deployments Fragment
+    live_deployments(manager)
 
-    # Active Deployments
-    st.header("Active Deployments")
+# ---------------------------
+# Live Deployment Fragment
+# ---------------------------
+@st.fragment(run_every=2000)  # Update every 2 seconds
+def live_deployments(manager):
+    """Fragment for real-time deployment monitoring"""
+    # Use empty containers for dynamic updates
+    status_container = st.container()
+    controls_container = st.container()
+    log_container = st.container()
     
-    if not manager.deployments:
-        st.info("No active deployments")
-        return
-    
-    # In the Active Deployments section
-    for dep_id, dep in list(manager.deployments.items()):
-        with st.container():
+    with status_container:
+        st.subheader("Active Deployments")
+        if not manager.deployments:
+            st.info("No active deployments")
+            return
+
+        # Deployment Status Cards
+        for dep_id, dep in list(manager.deployments.items()):
             cols = st.columns([1, 2, 1, 1])
             with cols[0]:
                 st.markdown(f"**{dep_id}**")
@@ -571,28 +583,42 @@ def main():
             with cols[1]:
                 st.caption(f"Strategy: {dep['config'].get('strategy_name', 'Unknown')}")
                 st.caption(f"Market: {dep['config']['market_params']['market_name']}")
-            
-            with cols[2]:
+
+    with controls_container:
+        # Interactive Controls
+        for dep_id, dep in list(manager.deployments.items()):
+            cols = st.columns([3, 1, 1])
+            with cols[1]:
                 if st.button("📋 Logs", key=f"logs_{dep_id}"):
                     st.session_state[f"show_logs_{dep_id}"] = not st.session_state.get(f"show_logs_{dep_id}", False)
-            
-            with cols[3]:
+            with cols[2]:
                 if st.button("⏹ Stop", key=f"stop_{dep_id}"):
-                    manager.stop_deployment(dep_id)
-            
+                    with st.spinner(f"Stopping {dep_id}..."):
+                        manager.stop_deployment(dep_id)
+                        st.rerun()
+
+    with log_container:
+        # Dynamic Log Display
+        for dep_id in manager.deployments:
             if st.session_state.get(f"show_logs_{dep_id}"):
-                log_content = read_log(dep_id)
-                st.download_button(
-                    label="Download Full Log",
-                    data=log_content,
-                    file_name=f"{dep_id}_logs.txt"
-                )
-                st.code("\n".join(log_content.split("\n")[-50:]))  # Show last 50 lines
-    
-    # After Active Deployments header
+                with st.expander(f"Logs for {dep_id}", expanded=True):
+                    log_content = read_log(dep_id)
+                    if log_content:
+                        st.download_button(
+                            label="Download Full Log",
+                            data=log_content,
+                            file_name=f"{dep_id}_logs.txt",
+                            key=f"dl_{dep_id}"
+                        )
+                        st.code("\n".join(log_content.split("\n")[-50:]))
+                    else:
+                        st.warning("No logs available")
+
+    # Clear button outside containers
     if st.button("🧹 Clear Stopped Deployments"):
-        manager._cleanup_zombies()
-        st.rerun()
+        with st.spinner("Cleaning up..."):
+            manager._cleanup_zombies()
+            st.rerun()
 
 if __name__ == "__main__":
     main()
