@@ -1,0 +1,22 @@
+{
+    "market_name": "crypto_binance",
+    "symbol_list": [
+        "ETH/BTC",
+        "LTC/BTC"
+    ],
+    "pair": "BTC",
+    "timeframe": "15m",
+    "strategy_type": "multi",
+    "start_date": "2025-01-01T00:00:00",
+    "end_date": "2025-02-13T00:00:00",
+    "init_cash": 100000,
+    "fees": 0.0001,
+    "slippage": 0.0001,
+    "size": 0.1,
+    "cash_sharing": true,
+    "allow_partial": true,
+    "strategy_params": {
+        "fast_ema_period": 10,
+        "slow_ema_period": 100
+    }
+}
