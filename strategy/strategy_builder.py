@@ -6,11 +6,15 @@ class StrategyBaseClass:
     Base class for all trading strategies. Child classes must implement the run method.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, name: str = "Unnamed Strategy") -> None:
         """
         Initialize strategy parameters. Child classes should set their parameters as instance variables.
         """
-        pass
+        self._display_name = name
+    
+    @property
+    def display_name(self) -> str:
+        return self._display_name
 
     @property
     def params(self) -> Dict[str, Any]:

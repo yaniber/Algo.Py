@@ -18,7 +18,7 @@ class EMAStrategy(StrategyBaseClass):
             fast_ema_period (int): Period for fast EMA calculation
             slow_ema_period (int): Period for slow EMA calculation
         """
-        super().__init__()
+        super().__init__(name="EMA Crossover Strategy")
         self.fast_ema_period = fast_ema_period
         self.slow_ema_period = slow_ema_period
 

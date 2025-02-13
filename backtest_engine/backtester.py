@@ -201,22 +201,16 @@ class Backtester:
     def save_backtest(self, pf: vbt.Portfolio) -> None:
         """
         Save the backtest results and parameters.
-
-        Args:
-            pf (vbt.Portfolio): The portfolio to save.
         """
-        save_dir = Path("backtest_results") / uuid.uuid4().hex
+        backtest_id = f"{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+        save_dir = Path("backtest_results") / backtest_id
         save_dir.mkdir(parents=True, exist_ok=True)
 
-        self.progress_callback(80, "Saving portfolio...")
-        pf.save(str(save_dir / "portfolio.pkl"))
-
-        self.progress_callback(85, "Saving trades...")
-        trades = pf.trades.records_readable
-        trades.to_parquet(save_dir / "trades.parquet")
-
-        self.progress_callback(90, "Saving parameters...")
-        params = {
+        # Create consolidated parameters with proper serialization
+        full_params = {
+            "backtest_id": backtest_id,
+            "created_at": pd.Timestamp.now().isoformat(),
+            "strategy_name": self.strategy_object.display_name,
             "market_name": self.market_name,
             "symbol_list": self.symbol_list,
             "pair": self.pair,
@@ -230,11 +224,26 @@ class Backtester:
             "size": self.size,
             "cash_sharing": self.cash_sharing,
             "allow_partial": self.allow_partial,
-            "strategy_params": self.strategy_object.params
+            "strategy_params": self.strategy_object.params,
+            "performance": {
+                "returns": float(pf.total_return),
+                "sharpe_ratio": float(pf.sharpe_ratio),
+                "max_drawdown": float(pf.max_drawdown),
+                "duration_days": (self.end_date - self.start_date).days
+            }
         }
 
+        # Save parameters (single consolidated file)
         with open(save_dir / "params.json", 'w') as f:
-            json.dump(params, f, indent=4)
+            json.dump(full_params, f, indent=4, default=str)
+
+        # Save portfolio and trades
+        self.progress_callback(80, "Saving portfolio...")
+        pf.save(str(save_dir / "portfolio.pkl"))
+
+        self.progress_callback(85, "Saving trades...")
+        trades = pf.trades.records_readable
+        trades.to_parquet(save_dir / "trades.parquet")
 
         self.progress_callback(95, "Backtest saved.")
 
