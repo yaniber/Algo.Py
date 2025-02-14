@@ -12,5 +12,6 @@ BTengine/*
 documentation/*
 backtest_results/*
 deploy_logs/*
+.vscode
 *.db*
 to-do.txt
