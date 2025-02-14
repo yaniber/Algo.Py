@@ -15,8 +15,8 @@ from dotenv import load_dotenv
 # ---------------------------
 # Setup persistent storage paths
 # ---------------------------
-DEPLOYMENTS_FILE = "active_deployments.json"
-LOG_DIR = "deploy_logs"
+DEPLOYMENTS_FILE = "database/deployment/active_deployments.json"
+LOG_DIR = "database/deployment/logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # ---------------------------

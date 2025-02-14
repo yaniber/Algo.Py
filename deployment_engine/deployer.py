@@ -100,7 +100,7 @@ class Deployer:
         progress_callback: Optional[Callable[[int, str], None]] = None,
     ) -> "Deployer":
         """Initialize Deployer from a backtest UUID."""
-        bt_dir = Path(f"backtest_results/{backtest_uuid}")
+        bt_dir = Path(f"database/backtest/{backtest_uuid}")
         params_path = bt_dir / "params.json"
         
         with open(params_path, "r") as f:
@@ -256,9 +256,9 @@ class Deployer:
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Identify fresh entries and exits using TradeMonitor."""
         if self.backtest_uuid:
-            storage_file = f"backtest_results/{self.backtest_uuid}/past_positions.parquet"
+            storage_file = f"database/backtest/{self.backtest_uuid}/past_positions.parquet"
         else:
-            storage_file = f"backtest_results/{uuid.uuid4()}/past_positions.parquet"
+            storage_file = f"database/backtest/{uuid.uuid4()}/past_positions.parquet"
         
         trade_monitor = TradeMonitor(storage_file=storage_file)
         

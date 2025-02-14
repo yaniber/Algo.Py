@@ -203,7 +203,7 @@ class Backtester:
         Save the backtest results and parameters.
         """
         backtest_id = f"{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-        save_dir = Path("backtest_results") / backtest_id
+        save_dir = Path("database/backtest") / backtest_id
         save_dir.mkdir(parents=True, exist_ok=True)
 
         # Create consolidated parameters with proper serialization

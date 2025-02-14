@@ -14,7 +14,7 @@ st.title("🔍 Backtest Analysis Hub")
 def load_backtests():
     """Load all backtests with error handling"""
     backtests = []
-    bt_dir = Path("backtest_results")
+    bt_dir = Path("database/backtest")
     
     for bt_path in bt_dir.glob("*"):
         if not bt_path.is_dir():
