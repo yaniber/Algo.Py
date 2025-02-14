@@ -10,5 +10,7 @@ database/db/*
 database/finstore/*
 BTengine/*
 documentation/*
+backtest_results/*
+deploy_logs/*
 *.db*
 to-do.txt
