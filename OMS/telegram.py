@@ -78,5 +78,11 @@ class Telegram(OMS):
     
     def iterate_orders_df(self, orders_df: pd.DataFrame):
         pass 
-    
+
+    def execute(self, fresh_entries, fresh_exits):
+
+        message = (f"fresh_entries : {fresh_entries}\n"
+                        f"fresh_exits : {fresh_exits}")
+        
+        self.send_telegram_message(message)
     

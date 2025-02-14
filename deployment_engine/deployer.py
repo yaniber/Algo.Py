@@ -256,9 +256,9 @@ class Deployer:
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Identify fresh entries and exits using TradeMonitor."""
         if self.backtest_uuid:
-            storage_file = f"database/db/{self.backtest_uuid}.parquet"
+            storage_file = f"backtest_results/{self.backtest_uuid}/past_positions.parquet"
         else:
-            storage_file = f"database/db/{uuid.uuid4()}.parquet"
+            storage_file = f"backtest_results/{uuid.uuid4()}/past_positions.parquet"
         
         trade_monitor = TradeMonitor(storage_file=storage_file)
         
