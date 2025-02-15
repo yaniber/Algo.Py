@@ -10,19 +10,8 @@ from dotenv import load_dotenv
 import pandas as pd
 from OMS.telegram import Telegram
 
-class Zerodha(OMS):
-    _instance = None  # Class-level attribute to hold the singleton instance
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(Zerodha, cls).__new__(cls)
-        return cls._instance
-    
+class Zerodha(OMS):   
     def __init__(self, userid: str = None, password: str = None, totp: str = None):
-
-        if hasattr(self, '_initialized') and self._initialized:
-            # Prevents reinitialization if the instance already exists
-            return
         
         if not userid or not password or not totp:
             load_dotenv(dotenv_path='config/.env')
@@ -44,8 +33,6 @@ class Zerodha(OMS):
         self.telegram = Telegram()
         self.successful_orders = []
         self.failed_orders = []
-
-        self._initialized = True
     
     def iterate_orders_df(self, orders: pd.DataFrame) -> tuple[list, list]:
         if not orders.empty:

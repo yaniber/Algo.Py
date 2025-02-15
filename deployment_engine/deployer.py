@@ -78,14 +78,11 @@ class Deployer:
             group_id = self.oms_params.get('group_id')
             self.oms = Telegram(group_id=group_id)
         elif self.oms_name == 'crypto_binance':
-            from OMS.crypto_binance import BinanceOMS
-            api_key = self.oms_params.get('api_key')
-            api_secret = self.oms_params.get('api_secret')
-            self.oms = BinanceOMS(api_key=api_key, api_secret=api_secret)
+            from OMS.binance_oms import Binance
+            self.oms = Binance()
         elif self.oms_name == 'indian_equity':
-            from OMS.indian_equity import EquityOMS
-            broker_config = self.oms_params.get('broker_config')
-            self.oms = EquityOMS(broker_config=broker_config)
+            from OMS.zerodha import Zerodha
+            self.oms = Zerodha()
         else:
             raise ValueError(f"OMS {self.oms_name} is not supported.")
 
