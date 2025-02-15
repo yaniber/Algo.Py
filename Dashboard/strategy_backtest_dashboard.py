@@ -1,66 +1,4 @@
 # -------------------------------------------------------------------
-# Lazy Utils
-# -------------------------------------------------------------------
-
-import threading
-import importlib
-
-def lazy_import(module_path: str, global_vars: dict, alias: str = None):
-    """
-    Lazily imports a module or an attribute from a module in the background and assigns it to a global variable.
-
-    Args:
-        module_path (str): The full module path, e.g., 'vectorbtpro' or 'backtest_engine.backtester.Backtester'.
-        global_vars (dict): The globals() dictionary where the imported object should be stored.
-        alias (str, optional): The alias to assign the imported object to. If None, uses the last part of module_path.
-    """
-    # Determine the name to check in globals (alias or last part of module_path)
-    check_name = alias if alias else module_path.split(".")[-1]
-
-    # Prevent re-importing if already in globals
-    if check_name in global_vars:
-        print(f"Lazy import skipped: {check_name} is already imported.")
-        return
-
-    def import_in_background():
-        try:
-            if "." in module_path:
-                # Import specific attribute/class/function from a module
-                module_parts = module_path.split(".")
-                module_name = ".".join(module_parts[:-1])  # Extract module name
-                attr_name = module_parts[-1]  # Extract class or function name
-
-                module = importlib.import_module(module_name)
-                imported_obj = getattr(module, attr_name)
-
-                global_vars[check_name] = imported_obj
-            else:
-                # Import the full module
-                global_vars[check_name] = importlib.import_module(module_path)
-            
-            print(f"Lazy import completed: {check_name}")
-
-        except Exception as e:
-            print(f"Lazy import failed for {module_path}: {e}")
-
-    threading.Thread(target=import_in_background, daemon=True).start()
-
-
-def lazy_execute(func, args=(), kwargs={}):
-    """
-    Executes a function in the background without blocking UI.
-
-    Args:
-        func (callable): The function to execute.
-        args (tuple): Positional arguments for the function.
-        kwargs (dict): Keyword arguments for the function.
-    """
-    def run_in_background():
-        func(*args, **kwargs)
-
-    threading.Thread(target=run_in_background, daemon=True).start()
-
-# -------------------------------------------------------------------
 # Imports
 # -------------------------------------------------------------------
 
@@ -72,8 +10,6 @@ from datetime import date
 import pickle
 import time
 from finstore.finstore import Finstore
-lazy_import("backtest_engine.backtester.Backtester", globals(), "Backtester")
-lazy_import("vectorbtpro", globals(), "vbt")
 from strategy.public.ema_strategy import get_ema_signals_wrapper
 from strategy.strategy_registry import STRATEGY_REGISTRY
 import plotly.graph_objects as go
@@ -479,7 +415,9 @@ def show_backtester_page():
                 status_text.empty()
         
         try:
-            update_progress(0, "📂 Loading market data...")
+            update_progress(0,"Importing Libraries...")
+            from backtest_engine.backtester import Backtester
+            update_progress(10, "📂 Loading market data...")
             
             strategy_instance = strategy_func(
                 params.get('fast_ema_period', 10),
@@ -623,128 +561,134 @@ def show_backtester_page():
     # 🔄 Load Previously Backtested Portfolio
     with st.expander("📂 Load Previous Backtest", expanded=False):
 
-        # Fetch available backtests
-        backtests = Backtester.list_backtests()
+        with st.spinner("Loading backtests..."):
 
-        if not backtests:
-            st.info("No saved backtests found. Run and save a backtest first.")
-        else:
-            selected_backtest = st.selectbox("Select a backtest to view:", list(backtests.keys()))
+            from backtest_engine.backtester import Backtester
+            # Fetch available backtests
+            backtests = Backtester.list_backtests()
 
-            if selected_backtest:
-                params = backtests[selected_backtest]
+            if not backtests:
+                st.info("No saved backtests found. Run and save a backtest first.")
+            else:
+                selected_backtest = st.selectbox("Select a backtest to view:", list(backtests.keys()))
 
-                col1, col2 = st.columns(2)
+                if selected_backtest:
+                    params = backtests[selected_backtest]
 
-                with col1:
-                    st.write(f"**Strategy Name:** {params['strategy_name']}")
-                    st.write(f"**Market Name:** {params['market_name']}")
-                    st.write(f"**Timeframe:** {params['timeframe']}")
-                    st.write(f"**Symbols:** {', '.join(params['symbol_list'])}")
-                    st.write(f"**Trading Pair:** {params['pair']}")
-                    st.write(f"**Start Date:** {params['start_date']}")
-                    st.write(f"**End Date:** {params['end_date']}")
+                    col1, col2 = st.columns(2)
 
-                with col2:
-                    st.write(f"**Initial Cash:** ${params['init_cash']:,.2f}")
-                    st.write(f"**Trading Fees:** {params['fees'] * 100:.4f}%")
-                    st.write(f"**Slippage:** {params['slippage'] * 100:.4f}%")
-                    st.write(f"**Allow Partial Orders:** {params['allow_partial']}")
-                    st.write("**Strategy Parameters:**")
-                    st.json(params["strategy_params"])
+                    with col1:
+                        st.write(f"**Strategy Name:** {params['strategy_name']}")
+                        st.write(f"**Market Name:** {params['market_name']}")
+                        st.write(f"**Timeframe:** {params['timeframe']}")
+                        st.write(f"**Symbols:** {', '.join(params['symbol_list'])}")
+                        st.write(f"**Trading Pair:** {params['pair']}")
+                        st.write(f"**Start Date:** {params['start_date']}")
+                        st.write(f"**End Date:** {params['end_date']}")
 
-                # 📊 Performance Metrics
-                st.subheader("📊 Performance Metrics")
-                col1, col2, col3 = st.columns(3)
-                col1.metric(label="📈 Returns", value=f"{params['performance']['returns']:.2%}")
-                col2.metric(label="📈 Sharpe Ratio", value=f"{params['performance']['sharpe_ratio']:.2f}")
-                col3.metric(label="📉 Max Drawdown", value=f"{params['performance']['max_drawdown']:.2%}")
+                    with col2:
+                        st.write(f"**Initial Cash:** ${params['init_cash']:,.2f}")
+                        st.write(f"**Trading Fees:** {params['fees'] * 100:.4f}%")
+                        st.write(f"**Slippage:** {params['slippage'] * 100:.4f}%")
+                        st.write(f"**Allow Partial Orders:** {params['allow_partial']}")
+                        st.write("**Strategy Parameters:**")
+                        st.json(params["strategy_params"])
 
-                # 🔄 Load Backtest Button
-                if st.button("🔍 Load Portfolio & Stats"):
-                    with st.spinner("Loading backtest..."):
-                        pf, _ = Backtester.load_backtest(selected_backtest)  # Load portfolio
+                    # 📊 Performance Metrics
+                    st.subheader("📊 Performance Metrics")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric(label="📈 Returns", value=f"{params['performance']['returns']:.2%}")
+                    col2.metric(label="📈 Sharpe Ratio", value=f"{params['performance']['sharpe_ratio']:.2f}")
+                    col3.metric(label="📉 Max Drawdown", value=f"{params['performance']['max_drawdown']:.2%}")
+                    
+                    deploy_col1, deploy_col2 = st.columns(2)
+                    # 🔄 Load Backtest Button
+                    if deploy_col1.button("🔍 Load Portfolio & Stats"):
+                        with st.spinner("Loading backtest..."):
+                            pf, _ = Backtester.load_backtest(selected_backtest)  # Load portfolio
 
-                    # ✅ Success message
-                    st.success(f"Successfully loaded backtest: {selected_backtest}")
+                        # ✅ Success message
+                        st.success(f"Successfully loaded backtest: {selected_backtest}")
 
-                    # 📊 Display Portfolio Statistics
-                    st.subheader("📊 Portfolio Statistics")
-                    stats_df = pf.stats().to_frame(name="Value")
+                        # 📊 Display Portfolio Statistics
+                        st.subheader("📊 Portfolio Statistics")
+                        stats_df = pf.stats().to_frame(name="Value")
 
-                    # Convert Timedelta values to readable format
-                    stats_df["Value"] = stats_df["Value"].apply(lambda x: str(x) if isinstance(x, pd.Timedelta) else x)
+                        # Convert Timedelta values to readable format
+                        stats_df["Value"] = stats_df["Value"].apply(lambda x: str(x) if isinstance(x, pd.Timedelta) else x)
 
-                    st.dataframe(stats_df)
+                        st.dataframe(stats_df)
 
-                    # --- 📈 Equity (PNL) Curve ---
-                    st.subheader("📈 Equity (PNL) Curve")
-                    fig_pnl = go.Figure()
-                    fig_pnl.add_trace(go.Scatter(
-                        x=pf.value.index, 
-                        y=pf.value,
-                        mode='lines',
-                        name="Portfolio Value"
-                    ))
-                    fig_pnl.update_layout(
-                        yaxis_title="Portfolio Value",
-                        title="Equity Curve",
-                        yaxis_type="log" if pf.value.max() > 10000 else "linear"
-                    )
-                    st.plotly_chart(fig_pnl)
+                        # --- 📈 Equity (PNL) Curve ---
+                        st.subheader("📈 Equity (PNL) Curve")
+                        fig_pnl = go.Figure()
+                        fig_pnl.add_trace(go.Scatter(
+                            x=pf.value.index, 
+                            y=pf.value,
+                            mode='lines',
+                            name="Portfolio Value"
+                        ))
+                        fig_pnl.update_layout(
+                            yaxis_title="Portfolio Value",
+                            title="Equity Curve",
+                            yaxis_type="log" if pf.value.max() > 10000 else "linear"
+                        )
+                        st.plotly_chart(fig_pnl)
 
-                    # --- 📈 Cumulative Returns ---
-                    st.subheader("📈 Cumulative Returns")
-                    fig_cum = go.Figure()
-                    fig_cum.add_trace(go.Scatter(
-                        x=pf.cumulative_returns.index, 
-                        y=pf.cumulative_returns,
-                        mode='lines',
-                        name="Cumulative Returns"
-                    ))
-                    fig_cum.update_layout(
-                        yaxis_title="Cumulative Returns",
-                        title="Cumulative Returns Curve",
-                        yaxis_type="log" if pf.cumulative_returns.max() > 10 else "linear"
-                    )
-                    st.plotly_chart(fig_cum)
+                        # --- 📈 Cumulative Returns ---
+                        st.subheader("📈 Cumulative Returns")
+                        fig_cum = go.Figure()
+                        fig_cum.add_trace(go.Scatter(
+                            x=pf.cumulative_returns.index, 
+                            y=pf.cumulative_returns,
+                            mode='lines',
+                            name="Cumulative Returns"
+                        ))
+                        fig_cum.update_layout(
+                            yaxis_title="Cumulative Returns",
+                            title="Cumulative Returns Curve",
+                            yaxis_type="log" if pf.cumulative_returns.max() > 10 else "linear"
+                        )
+                        st.plotly_chart(fig_cum)
 
-                    # 📊 Returns Overview
-                    st.subheader("📊 Returns Overview")
-                    returns_df = pf.returns.to_frame(name="Returns")
-                    st.dataframe(returns_df)
+                        # 📊 Returns Overview
+                        st.subheader("📊 Returns Overview")
+                        returns_df = pf.returns.to_frame(name="Returns")
+                        st.dataframe(returns_df)
 
-                    # 📑 Trade History
-                    st.subheader("📝 Trade History")
-                    st.dataframe(pf.trade_history)
+                        # 📑 Trade History
+                        st.subheader("📝 Trade History")
+                        st.dataframe(pf.trade_history)
 
-                    # 🔍 Trade Signals
-                    st.subheader("📌 Trade Signals")
-                    st.dataframe(pf.trades.records_readable)
+                        # 🔍 Trade Signals
+                        st.subheader("📌 Trade Signals")
+                        st.dataframe(pf.trades.records_readable)
 
-                    # 🔍 Advanced Metrics & Risk Analysis
-                    with st.spinner("Loading Advanced Statistics..."):
-                        # 📊 Expanding Maximum Favorable Excursion (MFE)
-                        st.subheader("📊 Expanding MFE")
-                        fig_mfe = pf.trades.plot_expanding_mfe_returns()
-                        st.plotly_chart(fig_mfe)
+                        # 🔍 Advanced Metrics & Risk Analysis
+                        with st.spinner("Loading Advanced Statistics..."):
+                            # 📊 Expanding Maximum Favorable Excursion (MFE)
+                            st.subheader("📊 Expanding MFE")
+                            fig_mfe = pf.trades.plot_expanding_mfe_returns()
+                            st.plotly_chart(fig_mfe)
 
-                        # 📊 Expanding Maximum Adverse Excursion (MAE)
-                        st.subheader("📊 Expanding MAE")
-                        fig_mae = pf.trades.plot_expanding_mae_returns()
-                        st.plotly_chart(fig_mae)
+                            # 📊 Expanding Maximum Adverse Excursion (MAE)
+                            st.subheader("📊 Expanding MAE")
+                            fig_mae = pf.trades.plot_expanding_mae_returns()
+                            st.plotly_chart(fig_mae)
 
-                        # 📈 Risk-adjusted Metrics: Sharpe & Sortino Ratios
-                        sharpe_ratio = pf.get_sharpe_ratio()
-                        sortino_ratio = pf.get_sortino_ratio()
-                        st.metric(label="📈 Sharpe Ratio", value=f"{sharpe_ratio:.2f}")
-                        st.metric(label="📈 Sortino Ratio", value=f"{sortino_ratio:.2f}")
+                            # 📈 Risk-adjusted Metrics: Sharpe & Sortino Ratios
+                            sharpe_ratio = pf.get_sharpe_ratio()
+                            sortino_ratio = pf.get_sortino_ratio()
+                            st.metric(label="📈 Sharpe Ratio", value=f"{sharpe_ratio:.2f}")
+                            st.metric(label="📈 Sortino Ratio", value=f"{sortino_ratio:.2f}")
 
-                        # 📊 Benchmark Comparison (if available)
-                        if hasattr(pf, 'benchmark_cumulative_returns'):
-                            st.subheader("📊 Benchmark vs Portfolio Performance")
-                            st.line_chart(pf.benchmark_cumulative_returns)
+                            # 📊 Benchmark Comparison (if available)
+                            if hasattr(pf, 'benchmark_cumulative_returns'):
+                                st.subheader("📊 Benchmark vs Portfolio Performance")
+                                st.line_chart(pf.benchmark_cumulative_returns)
 
+                    if deploy_col2.button("🚀 Deploy Strategy"):
+                        st.warning("⚡ Strategy Deployment Feature Coming Soon!")        
 
 
 # Run the page
