@@ -17,6 +17,7 @@ from strategy.strategy_builder import StrategyBaseClass
 from data.update.crypto_binance import fill_gap
 from utils.db.fetch import fetch_entries
 from executor.monitor import TradeMonitor
+from strategy.strategy_registry import STRATEGY_REGISTRY
 
 class Deployer:
     def __init__(
@@ -110,10 +111,8 @@ class Deployer:
         strategy_params = data["strategy_params"]
         
         # Map strategy_name to the corresponding class
-        if strategy_name == "EMA Crossover Strategy":
-            from strategy.public.EmaStrat import EMAStrategy
-            strategy_cls = EMAStrategy
-        else:
+        strategy_cls = STRATEGY_REGISTRY.get(strategy_name, None).get('class', None)
+        if not strategy_cls:
             raise ValueError(f"Strategy {strategy_name} not supported.")
         
         strategy_object = strategy_cls(**strategy_params)
