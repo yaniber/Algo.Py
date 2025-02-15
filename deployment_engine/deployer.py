@@ -254,9 +254,9 @@ class Deployer:
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Identify fresh entries and exits using TradeMonitor."""
         if self.backtest_uuid:
-            storage_file = f"database/backtest/{self.backtest_uuid}/past_positions.parquet"
+            storage_file = f"database/deployment/{self.backtest_uuid}/past_positions.parquet"
         else:
-            storage_file = f"database/backtest/{uuid.uuid4()}/past_positions.parquet"
+            storage_file = f"database/deployment/{uuid.uuid4()}/past_positions.parquet"
         
         storage_dir = Path(storage_file).parent
         storage_dir.mkdir(parents=True, exist_ok=True)

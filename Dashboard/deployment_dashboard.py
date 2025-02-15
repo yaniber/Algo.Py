@@ -46,9 +46,9 @@ def dynamic_strategy_loader():
 # ---------------------------
 # Enhanced Parameter Handling
 # ---------------------------
-def get_strategy_params(func):
+def get_strategy_params(cls):
     """Improved parameter extraction with type handling"""
-    sig = inspect.signature(func.__init__)
+    sig = inspect.signature(cls.__init__)
     params = {}
     for name, param in list(sig.parameters.items())[1:]:  # Skip ohlcv_data and symbol_list
         param_info = {
@@ -177,6 +177,8 @@ def serialize_deployment_config(config):
         del serializable["strategy_func"]
     if "oms_instance" in serializable:
         del serializable["oms_instance"]
+    if "strategy_object" in serializable:
+        del serializable["strategy_object"]
     return serializable
 
 def load_active_deployments():
@@ -211,123 +213,51 @@ def read_log(deployment_id):
 # Deployment runner function for the process
 # ---------------------------
 def deployment_runner_process(deployment_id, config):
-    """
-    This function runs in a separate process. It writes logs to a file.
-    It uses schedule to run the deployment cycle periodically.
-    """
-    from executor.monitor import TradeMonitor
-    import vectorbtpro as vbt
-    append_log(deployment_id, f"Deployment {deployment_id} started with config: {config}")
-
-    def scheduled_job():
-        append_log(deployment_id, "=== Starting scheduled deployment cycle ===")
-        try:
-            # Step 1: Fill gap data
-            market_params = config.get("market_params", {})
-            append_log(deployment_id, "Calling fill_gap...")
-            from data.update.crypto_binance import fill_gap  # local import
-            #fill_gap(
-            #    market_name=market_params.get("market_name"),
-            #    timeframe=market_params.get("timeframe"),
-            #    complete_list=False,
-            #    pair=market_params.get("pair")
-            #)
-            append_log(deployment_id, "fill_gap completed.")
-
-            # Step 2: Fetch OHLCV data
-            append_log(deployment_id, "Fetching OHLCV data via fetch_entries...")
-            from utils.db.fetch import fetch_entries  # local import
-            ohlcv_data = fetch_entries(
-                market_name=market_params.get("market_name"),
-                timeframe=market_params.get("timeframe"),
-                symbol_list=config.get("asset_universe"),
-                all_entries=False,
-                pair=market_params.get("pair")
-            )
-            append_log(deployment_id, "OHLCV data fetched.")
-
-            # Step 3: Generate signals using the strategy
-            strategy_func = config["strategy_func"]
-            strategy_params = config["strategy_params"]
-            asset_universe = config["asset_universe"]
-
-            append_log(deployment_id, "Generating signals using strategy...")
-            entries, exits, close_data, open_data = strategy_func(ohlcv_data, asset_universe, **strategy_params)
-            append_log(deployment_id, "Strategy signals generated.")
-
-            fresh_entries, fresh_exits = entry_generator(entries, exits, close_data, open_data, deployment_id, size=0.01)
-
-            # Step 4: Order placement via OMS
-            oms = config["oms_instance"]
-            append_log(deployment_id, f"Placing orders via OMS: {config['oms_type']}...")
-            if config["oms_type"] == "Telegram":
-                message = (f"Deployment {deployment_id} orders summary:\n"
-                           f"Entries count: {entries.sum().sum()}\n"
-                           f"Exits count: {exits.sum().sum()}\n"
-                           f"fresh_entries : {fresh_entries}\n"
-                           f"fresh_exits : {fresh_exits}")
-                oms.send_telegram_message(message)
-                append_log(deployment_id, f"Telegram message sent: {message}")
-            elif config["oms_type"] == "Zerodha":
-                orders_df = pd.DataFrame({
-                    "symbol": list(asset_universe),
-                    "Side": ["Buy"] * len(asset_universe),
-                    "Size": [1] * len(asset_universe),
-                    "Price": [0] * len(asset_universe)
-                })
-                oms.iterate_orders_df(orders_df)
-                append_log(deployment_id, "Zerodha orders processed.")
-            else:
-                append_log(deployment_id, "OMS type not recognized. Skipping order placement.")
-
-            append_log(deployment_id, "=== Deployment cycle completed ===")
-        except Exception as e:
-            append_log(deployment_id, f"Error during deployment cycle: {str(e)}")
-
-    def entry_generator(entries, exits, close_data, open_data, deployment_id, size=1, sim_start=pd.to_datetime('2025-02-01'), sim_end=pd.Timestamp.now().strftime('%Y-%m-%d 00:00:00'), init_cash=10000):
-        trade_monitor = TradeMonitor(storage_file=f'database/db/{deployment_id}.parquet')
+    """Run deployment using the Deployer class"""
+    try:
+        from deployment_engine.deployer import Deployer
+        append_log(deployment_id, f"🚀 Starting deployment with Deployer class")
         
-        pf = vbt.Portfolio.from_signals(
-            close=close_data,
-            entries=entries,
-            exits=exits,
-            direction='longonly',
-            init_cash=init_cash,
-            cash_sharing=True,
-            size=size,
-            size_type="valuepercent",
+        # Convert OMS config to Deployer format
+        oms_mapping = {
+            "Telegram": ("Telegram", {'group_id': config['oms']['config'].get('chat_id')}),
+            "Zerodha": ("indian_equity", {'broker_config': config['oms']['config']}),
+            "Binance": ("crypto_binance", config['oms']['config'])
+        }
+        oms_name, oms_params = oms_mapping.get(config['oms_type'], (None, None))
+        
+        # Create Deployer instance
+        deployer = Deployer(
+            market_name=config['market_params']['market_name'],
+            symbol_list=config['asset_universe'],
+            timeframe=config['market_params']['timeframe'],
+            scheduler_type=config['scheduler_type'],
+            scheduler_interval=str(config['scheduler_interval']),
+            strategy_object=config['strategy_object'],
+            strategy_type=config['strategy_name'],
+            start_date=pd.Timestamp.now() - pd.Timedelta(days=365),
+            end_date=pd.Timestamp.now(),
+            init_cash=10000,
             fees=0.0005,
             slippage=0.001,
+            size=0.01,
+            cash_sharing=True,
             allow_partial=False,
-            size_granularity=1.0,
-            sim_start=sim_start,
-            sim_end=sim_end,
+            oms_name=oms_name,
+            pair=config['market_params'].get('pair'),
+            oms_params=oms_params,
+            progress_callback=lambda p, s: append_log(deployment_id, f"PROGRESS: {p}% - {s}")
         )
-
-        trade_history = pf.trade_history
-
-        fresh_buys, fresh_sells = trade_monitor.monitor_fresh_trades(trade_history)
-
-        return fresh_buys, fresh_sells
-    
-    # Setup scheduling based on configuration
-    scheduler_type = config.get("scheduler_type", "fixed_interval")
-    if scheduler_type == "fixed_interval":
-        interval = config.get("scheduler_interval", 60)
-        append_log(deployment_id, f"Scheduling job every {interval} minutes.")
-        scheduled_job()
-        schedule.every(interval).minutes.do(scheduled_job)
-    elif scheduler_type == "specific_time":
-        target_time = config.get("scheduler_interval", "00:00")
-        append_log(deployment_id, f"Scheduling job every day at {target_time}.")
-        schedule.every().day.at(target_time).do(scheduled_job)
-    else:
-        append_log(deployment_id, "Unknown scheduler type. Exiting deployment runner process.")
-        return
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+        
+        append_log(deployment_id, "✅ Deployer initialized successfully")
+        while True:
+            time.sleep(1)  # Keep process alive
+            
+    except Exception as e:
+        import traceback
+        print(traceback.print_exc())
+        append_log(deployment_id, f"❌ Deployment failed: {str(e)}")
+        raise e
 
 # ---------------------------
 # Deployment Process Manager
@@ -516,16 +446,6 @@ def main():
                 options=["Telegram", "Zerodha", "Binance"]
             )
             oms_config = oms_config_widget(oms_type)
-            telegram_group_id = oms_config['chat_id']
-            if oms_type == "Telegram":
-                if not telegram_group_id:
-                    load_dotenv(dotenv_path='config/.env')
-                    dict_string = os.getenv("TELEGRAM_BOT_CHANNELS")
-                    if dict_string:
-                        my_dict = json.loads(dict_string)
-                        telegram_group_id = my_dict.get("15m_altbtc_momentum", "")
-                from OMS.telegram import Telegram
-                oms_instance = Telegram(group_id=telegram_group_id if telegram_group_id else None)
             
             # Scheduler Configuration
             scheduler = scheduler_config_widget()
@@ -535,12 +455,19 @@ def main():
                     st.error("Please select at least one asset")
                     return
                 
+                strategy_cls = strategy_config['func']
+                try:
+                    strategy_instance = strategy_cls(**param_values)
+                except Exception as e:
+                    st.error(f"Strategy initialization failed: {str(e)}")
+                    return
+                
                 try:
                     config = {
                         "strategy": selected_strategy,
                         "strategy_name" : 'EMA Crossover Strategy',
                         "strategy_func" : strategy_config['func'],
-                        "oms_instance": oms_instance,
+                        "strategy_object": strategy_instance,
                         "oms_type" : oms_type,
                         "strategy_params" : param_values,
                         "params": param_values,
@@ -564,6 +491,20 @@ def main():
                             "asset_universe" : asset_universe 
                         }
                     }
+
+                    if oms_type == "Telegram":
+                        config['oms']['config'] = {'chat_id': oms_config['chat_id']}
+                    elif oms_type == "Zerodha":
+                        config['oms']['config'] = {
+                            'userid': oms_config['userid'],
+                            'password': oms_config['password'],
+                            'totp': oms_config['totp']
+                        }
+                    elif oms_type == "Binance":
+                        config['oms']['config'] = {
+                            'api_key': oms_config['api_key'],
+                            'api_secret': oms_config['api_secret']
+                        }
                     
                     deployment_id = manager.start_deployment(config)
                     st.success(f"Deployment {deployment_id} started successfully!")
