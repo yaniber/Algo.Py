@@ -89,11 +89,10 @@ def asset_selection_widget(market_name, timeframe, default_symbols=None, default
     else:
         symbols = []
 
-    valid_defaults = [s for s in (default_symbols or []) if s in symbols]
     selected = st.multiselect(
         "Select assets:", 
         options=symbols,
-        default=valid_defaults if valid_defaults != [] else symbols[:5]
+        default=default_symbols if default_symbols != [] else symbols[:5]
     )
     return pair_type, selected
 
@@ -223,27 +222,40 @@ def deployment_runner_process(deployment_id, config):
         oms_name, oms_params = oms_mapping.get(config['oms_type'], (None, None))
         
         # Create Deployer instance
-        deployer = Deployer(
-            market_name=config['market_params']['market_name'],
-            symbol_list=config['asset_universe'],
-            timeframe=config['market_params']['timeframe'],
-            scheduler_type=config['scheduler_type'],
-            scheduler_interval=str(config['scheduler_interval']),
-            strategy_object=config['strategy_object'],
-            strategy_type=config['strategy_name'],
-            start_date=pd.Timestamp.now() - pd.Timedelta(days=365),
-            end_date=pd.Timestamp.now(),
-            init_cash=10000,
-            fees=0.0005,
-            slippage=0.001,
-            size=0.01,
-            cash_sharing=True,
-            allow_partial=False,
-            oms_name=oms_name,
-            pair=config['market_params'].get('pair'),
-            oms_params=oms_params,
-            progress_callback=lambda p, s: append_log(deployment_id, f"PROGRESS: {p}% - {s}")
-        )
+        if config['backtest_uuid']:
+            try:
+                from deployment_engine.deployer import Deployer
+                deployer = Deployer.from_backtest_uuid(
+                    backtest_uuid=config['backtest_uuid'],
+                    oms_name='Telegram',
+                    scheduler_type='fixed_interval',
+                    scheduler_interval='60',
+                    oms_params={}
+                )
+            except Exception as e:
+                st.error(f"Failed to load backtest: {str(e)}")
+        else:
+            deployer = Deployer(
+                market_name=config['market_params']['market_name'],
+                symbol_list=config['asset_universe'],
+                timeframe=config['market_params']['timeframe'],
+                scheduler_type=config['scheduler_type'],
+                scheduler_interval=str(config['scheduler_interval']),
+                strategy_object=config['strategy_object'],
+                strategy_type=config['strategy_name'],
+                start_date=pd.Timestamp.now() - pd.Timedelta(days=365),
+                end_date=pd.Timestamp.now(),
+                init_cash=10000,
+                fees=0.0005,
+                slippage=0.001,
+                size=0.01,
+                cash_sharing=True,
+                allow_partial=False,
+                oms_name=oms_name,
+                pair=config['market_params'].get('pair'),
+                oms_params=oms_params,
+                progress_callback=lambda p, s: append_log(deployment_id, f"PROGRESS: {p}% - {s}")
+            )
         
         append_log(deployment_id, "✅ Deployer initialized successfully")
         while True:
@@ -389,37 +401,22 @@ def main():
 
         # Get query parameters
         query_params = st.query_params
-        print('------------------------', query_params)
-        backtest_uuid = query_params.get("backtest_uuid", None)
-        
-        # Load backtest config if UUID exists
         preloaded_config = None
-        if backtest_uuid:
-            try:
-                from deployment_engine.deployer import Deployer
-                deployer = Deployer.from_backtest_uuid(
-                    backtest_uuid=backtest_uuid,
-                    oms_name='Telegram',  # Default value
-                    scheduler_type='fixed_interval',  # Default value
-                    scheduler_interval='60',
-                    oms_params={}
-                )
-                
-                preloaded_config = {
-                    'market_name': deployer.market_name,
-                    'timeframe': deployer.timeframe,
-                    'symbol_list': deployer.symbol_list,
-                    'strategy_name': deployer.strategy_object.display_name,
-                    'strategy_params': query_params.get('strategy_params', None),
-                    'pair': deployer.pair
-                }
-            except Exception as e:
-                st.error(f"Failed to load backtest: {str(e)}")
+        if query_params != {}:
+            backtest_uuid = query_params.get("backtest_uuid", None)
+            
+            # Load backtest config if UUID exists
+            preloaded_config = {
+                'market_name': query_params.get('market'),
+                'timeframe': query_params.get('timeframe'),
+                'symbol_list': query_params.get('symbols').split(','),
+                'strategy_name': query_params.get('strategy'),
+                'strategy_params': json.loads(query_params.get('strategy_params', None)),
+                'pair': query_params.get('pair')
+            }
+
         
         strategies = dynamic_strategy_loader()
-        #print('--------------', list(strategies.keys()).index(preloaded_config['strategy_name']) if preloaded_config else 0)
-        print('-------------', strategies)
-        print('--------------', preloaded_config['strategy_name'])
         selected_strategy = st.selectbox(
             "Strategy", 
             options=list(strategies.keys()),
@@ -435,7 +432,7 @@ def main():
             st.subheader("Strategy Parameters")
             param_values = {}
             for param, info in params.items():
-                default_val = st.session_state['preloaded_params'].get(param, info["default"])
+                default_val = preloaded_config['strategy_params'].get(param, info["default"]) if preloaded_config else info["default"]
                 if info["type"] == int:
                     param_values[param] = st.number_input(
                         param.replace("_", " ").title(),
@@ -519,6 +516,7 @@ def main():
                 
                 try:
                     config = {
+                        "backtest_uuid" : backtest_uuid,
                         "strategy": selected_strategy,
                         "strategy_name" : 'EMA Crossover Strategy',
                         "strategy_func" : strategy_config['func'],

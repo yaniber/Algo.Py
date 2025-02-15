@@ -701,7 +701,8 @@ def show_backtester_page():
                             'timeframe': params['timeframe'],
                             'symbols': ','.join(params['symbol_list']),
                             'strategy': params['strategy_name'],
-                            'strategy_params': json.dumps(params['strategy_params'])
+                            'strategy_params': json.dumps(params['strategy_params']),
+                            'pair' : params['pair']
                         }
                         
                         # Generate URL (assumes deployment dashboard runs on port 8502)
