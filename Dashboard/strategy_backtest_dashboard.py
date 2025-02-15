@@ -622,53 +622,62 @@ def show_backtester_page():
 
     # 🔄 Load Previously Backtested Portfolio
     with st.expander("📂 Load Previous Backtest", expanded=False):
-        saved_files = [f for f in os.listdir(SAVE_DIR) if f.endswith(".pkl")]
 
-        if saved_files:
-            selected_file = st.selectbox("Select a backtest file to load:", saved_files)
+        # Fetch available backtests
+        backtests = Backtester.list_backtests()
 
-            if st.button("Load Backtest"):
-                load_path = os.path.join(SAVE_DIR, selected_file)
+        if not backtests:
+            st.info("No saved backtests found. Run and save a backtest first.")
+        else:
+            selected_backtest = st.selectbox("Select a backtest to view:", list(backtests.keys()))
 
-                with open(load_path, "rb") as f:
-                    loaded_data = pickle.load(f)
+            if selected_backtest:
+                params = backtests[selected_backtest]
 
-                # Retrieve metadata
-                pf = loaded_data["portfolio"]
-                loaded_strategy = loaded_data["strategy"]
-                loaded_params = loaded_data["parameters"]
-                loaded_assets = loaded_data["assets"]
-                loaded_timeframe = loaded_data["timeframe"]
-                loaded_start_date = loaded_data["start_date"]
-                loaded_end_date = loaded_data["end_date"]
-                loaded_init_cash = loaded_data["initial_cash"]
-                loaded_fees = loaded_data["fees"]
-                loaded_slippage = loaded_data["slippage"]
-                loaded_allow_partial = loaded_data["allow_partial"]
+                col1, col2 = st.columns(2)
 
-                # ✅ Display loaded metadata
-                st.success(f"Successfully loaded backtest: {selected_file}")
-                st.write(f"**Strategy:** {loaded_strategy}")
-                st.write(f"**Timeframe:** {loaded_timeframe}")
-                st.write(f"**Assets:** {', '.join(loaded_assets)}")
-                st.write(f"**Initial Cash:** ${loaded_init_cash:,.2f}")
-                st.write(f"**Trading Fees:** {loaded_fees*100:.4f}%")
-                st.write(f"**Slippage:** {loaded_slippage*100:.4f}%")
-                st.write(f"**Allow Partial:** {loaded_allow_partial}")
-                st.write("**Strategy Parameters:**")
-                st.json(loaded_params)
+                with col1:
+                    st.write(f"**Strategy Name:** {params['strategy_name']}")
+                    st.write(f"**Market Name:** {params['market_name']}")
+                    st.write(f"**Timeframe:** {params['timeframe']}")
+                    st.write(f"**Symbols:** {', '.join(params['symbol_list'])}")
+                    st.write(f"**Trading Pair:** {params['pair']}")
+                    st.write(f"**Start Date:** {params['start_date']}")
+                    st.write(f"**End Date:** {params['end_date']}")
 
-                # 📊 Display backtest statistics
-                with st.spinner("Loading Backtest statistics..."):
-                    st.subheader("📊 Detailed Portfolio Statistics")
-                    stats_df = pf.stats().to_frame(name='Value')
+                with col2:
+                    st.write(f"**Initial Cash:** ${params['init_cash']:,.2f}")
+                    st.write(f"**Trading Fees:** {params['fees'] * 100:.4f}%")
+                    st.write(f"**Slippage:** {params['slippage'] * 100:.4f}%")
+                    st.write(f"**Allow Partial Orders:** {params['allow_partial']}")
+                    st.write("**Strategy Parameters:**")
+                    st.json(params["strategy_params"])
 
-                    # Convert Timedelta values to strings
+                # 📊 Performance Metrics
+                st.subheader("📊 Performance Metrics")
+                col1, col2, col3 = st.columns(3)
+                col1.metric(label="📈 Returns", value=f"{params['performance']['returns']:.2%}")
+                col2.metric(label="📈 Sharpe Ratio", value=f"{params['performance']['sharpe_ratio']:.2f}")
+                col3.metric(label="📉 Max Drawdown", value=f"{params['performance']['max_drawdown']:.2%}")
+
+                # 🔄 Load Backtest Button
+                if st.button("🔍 Load Portfolio & Stats"):
+                    with st.spinner("Loading backtest..."):
+                        pf, _ = Backtester.load_backtest(selected_backtest)  # Load portfolio
+
+                    # ✅ Success message
+                    st.success(f"Successfully loaded backtest: {selected_backtest}")
+
+                    # 📊 Display Portfolio Statistics
+                    st.subheader("📊 Portfolio Statistics")
+                    stats_df = pf.stats().to_frame(name="Value")
+
+                    # Convert Timedelta values to readable format
                     stats_df["Value"] = stats_df["Value"].apply(lambda x: str(x) if isinstance(x, pd.Timedelta) else x)
 
                     st.dataframe(stats_df)
 
-                    # --- Equity (PNL) Curve ---
+                    # --- 📈 Equity (PNL) Curve ---
                     st.subheader("📈 Equity (PNL) Curve")
                     fig_pnl = go.Figure()
                     fig_pnl.add_trace(go.Scatter(
@@ -684,7 +693,7 @@ def show_backtester_page():
                     )
                     st.plotly_chart(fig_pnl)
 
-                    # --- Cumulative Returns ---
+                    # --- 📈 Cumulative Returns ---
                     st.subheader("📈 Cumulative Returns")
                     fig_cum = go.Figure()
                     fig_cum.add_trace(go.Scatter(
@@ -700,44 +709,42 @@ def show_backtester_page():
                     )
                     st.plotly_chart(fig_cum)
 
-                    # Returns Overview
+                    # 📊 Returns Overview
                     st.subheader("📊 Returns Overview")
                     returns_df = pf.returns.to_frame(name="Returns")
                     st.dataframe(returns_df)
 
-                    # Trade History
+                    # 📑 Trade History
                     st.subheader("📝 Trade History")
                     st.dataframe(pf.trade_history)
 
-                    # Trade Signals (Records in a human-readable format)
+                    # 🔍 Trade Signals
                     st.subheader("📌 Trade Signals")
                     st.dataframe(pf.trades.records_readable)
 
-                # 🔍 Advanced Metrics & Risk Analysis
-                with st.spinner("Loading Advanced statistics..."):
-                    # Expanding Maximum Favorable Excursion (MFE)
-                    st.subheader("📊 Expanding MFE")
-                    fig_mfe = pf.trades.plot_expanding_mfe_returns()
-                    st.plotly_chart(fig_mfe)
+                    # 🔍 Advanced Metrics & Risk Analysis
+                    with st.spinner("Loading Advanced Statistics..."):
+                        # 📊 Expanding Maximum Favorable Excursion (MFE)
+                        st.subheader("📊 Expanding MFE")
+                        fig_mfe = pf.trades.plot_expanding_mfe_returns()
+                        st.plotly_chart(fig_mfe)
 
-                    # Expanding Maximum Adverse Excursion (MAE)
-                    st.subheader("📊 Expanding MAE")
-                    fig_mae = pf.trades.plot_expanding_mae_returns()
-                    st.plotly_chart(fig_mae)
+                        # 📊 Expanding Maximum Adverse Excursion (MAE)
+                        st.subheader("📊 Expanding MAE")
+                        fig_mae = pf.trades.plot_expanding_mae_returns()
+                        st.plotly_chart(fig_mae)
 
-                    # Risk-adjusted Metrics: Sharpe & Sortino Ratios
-                    sharpe_ratio = pf.get_sharpe_ratio()
-                    sortino_ratio = pf.get_sortino_ratio()
-                    st.metric(label="📈 Sharpe Ratio", value=f"{sharpe_ratio:.2f}")
-                    st.metric(label="📈 Sortino Ratio", value=f"{sortino_ratio:.2f}")
+                        # 📈 Risk-adjusted Metrics: Sharpe & Sortino Ratios
+                        sharpe_ratio = pf.get_sharpe_ratio()
+                        sortino_ratio = pf.get_sortino_ratio()
+                        st.metric(label="📈 Sharpe Ratio", value=f"{sharpe_ratio:.2f}")
+                        st.metric(label="📈 Sortino Ratio", value=f"{sortino_ratio:.2f}")
 
-                    # Benchmark Comparison (if available)
-                    if hasattr(pf, 'benchmark_cumulative_returns'):
-                        st.subheader("📊 Benchmark vs Portfolio Performance")
-                        st.line_chart(pf.benchmark_cumulative_returns)
+                        # 📊 Benchmark Comparison (if available)
+                        if hasattr(pf, 'benchmark_cumulative_returns'):
+                            st.subheader("📊 Benchmark vs Portfolio Performance")
+                            st.line_chart(pf.benchmark_cumulative_returns)
 
-        else:
-            st.info("No saved backtests found. Run and save a backtest first.")
 
 
 # Run the page

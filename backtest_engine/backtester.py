@@ -17,6 +17,8 @@ class Backtester:
     A class to backtest trading strategies on various financial markets.
     """
 
+    BACKTEST_DIR = Path("database/backtest")
+
     def __init__(
         self,
         market_name: str,
@@ -252,6 +254,59 @@ class Backtester:
         trades.to_parquet(save_dir / "trades.parquet")
 
         self.progress_callback(100, "Backtest saved.")
+    
+    @staticmethod
+    def list_backtests() -> Dict[str, Dict[str, Any]]:
+        """
+        List all saved backtests with their parameters.
+
+        Returns:
+            Dict[str, Dict[str, Any]]: Dictionary of backtest names mapped to their parameters.
+        """
+        backtests = {}
+        if not Backtester.BACKTEST_DIR.exists():
+            print("No backtest directory found.")
+            return backtests
+
+        for backtest_folder in Backtester.BACKTEST_DIR.iterdir():
+            if backtest_folder.is_dir():
+                params_file = backtest_folder / "params.json"
+                if params_file.exists():
+                    try:
+                        with open(params_file, 'r') as f:
+                            params = json.load(f)
+                        backtests[backtest_folder.name] = params
+                    except Exception as e:
+                        print(f"Error reading {params_file}: {e}")
+
+        return backtests
+
+    @staticmethod
+    def load_backtest(backtest_name: str) -> Tuple[vbt.Portfolio, Dict[str, Any]]:
+        """
+        Load a saved backtest by name.
+
+        Args:
+            backtest_name (str): The name of the backtest to load.
+
+        Returns:
+            Tuple[vbt.Portfolio, Dict[str, Any]]: A tuple containing the loaded Portfolio object and its parameters.
+        """
+        backtest_path = Backtester.BACKTEST_DIR / backtest_name
+        params_file = backtest_path / "params.json"
+        portfolio_file = backtest_path / "portfolio.pkl"
+
+        if not params_file.exists() or not portfolio_file.exists():
+            raise FileNotFoundError(f"Backtest {backtest_name} not found or incomplete.")
+
+        # Load parameters
+        with open(params_file, 'r') as f:
+            params = json.load(f)
+
+        # Load portfolio
+        portfolio = vbt.Portfolio.load(str(portfolio_file))
+
+        return portfolio, params
 
 
 if __name__ == '__main__':
