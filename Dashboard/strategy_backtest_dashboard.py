@@ -5,20 +5,43 @@
 import threading
 import importlib
 
-def lazy_import(module_name: str, global_vars: dict, alias: str = None):
+def lazy_import(module_path: str, global_vars: dict, alias: str = None):
     """
-    Lazily imports a module in the background and assigns it to a global variable with an alias.
-    
+    Lazily imports a module or an attribute from a module in the background and assigns it to a global variable.
+
     Args:
-        module_name (str): The module name as a string.
-        alias (str): The alias to assign the module to.
-        global_vars (dict): The globals() dictionary where the module should be stored.
+        module_path (str): The full module path, e.g., 'vectorbtpro' or 'backtest_engine.backtester.Backtester'.
+        global_vars (dict): The globals() dictionary where the imported object should be stored.
+        alias (str, optional): The alias to assign the imported object to. If None, uses the last part of module_path.
     """
+    # Determine the name to check in globals (alias or last part of module_path)
+    check_name = alias if alias else module_path.split(".")[-1]
+
+    # Prevent re-importing if already in globals
+    if check_name in global_vars:
+        print(f"Lazy import skipped: {check_name} is already imported.")
+        return
+
     def import_in_background():
-        if alias:
-            global_vars[alias] = importlib.import_module(module_name)
-        else:
-            global_vars[module_name] = importlib.import_module(module_name)
+        try:
+            if "." in module_path:
+                # Import specific attribute/class/function from a module
+                module_parts = module_path.split(".")
+                module_name = ".".join(module_parts[:-1])  # Extract module name
+                attr_name = module_parts[-1]  # Extract class or function name
+
+                module = importlib.import_module(module_name)
+                imported_obj = getattr(module, attr_name)
+
+                global_vars[check_name] = imported_obj
+            else:
+                # Import the full module
+                global_vars[check_name] = importlib.import_module(module_path)
+            
+            print(f"Lazy import completed: {check_name}")
+
+        except Exception as e:
+            print(f"Lazy import failed for {module_path}: {e}")
 
     threading.Thread(target=import_in_background, daemon=True).start()
 
@@ -49,6 +72,7 @@ from datetime import date
 import pickle
 import time
 from finstore.finstore import Finstore
+lazy_import("backtest_engine.backtester.Backtester", globals(), "Backtester")
 lazy_import("vectorbtpro", globals(), "vbt")
 from strategy.public.ema_strategy import get_ema_signals_wrapper
 from strategy.strategy_registry import STRATEGY_REGISTRY
@@ -339,29 +363,6 @@ def get_available_assets(timeframe=None):
         }
     })
     return asset_groups
-
-def process_selected_assets(selections, timeframe):
-    """Convert user selections to final symbol list with nested universes"""
-    all_assets = get_available_assets(timeframe)
-    selected_symbols = []
-    for selection in selections:
-        clean_selection = selection.replace(" ", "")
-        if '/ (All)' in clean_selection:
-            market_path = clean_selection.replace(' (All)', '').split('/')
-            current_level = all_assets
-            try:
-                for level in market_path:
-                    current_level = current_level[level.strip()]
-                symbols = []
-                for sub_level in current_level.values():
-                    symbols.extend(sub_level)
-                selected_symbols.extend(symbols)
-            except KeyError:
-                continue
-        elif '(All)' not in clean_selection:
-            selected_symbols.append(clean_selection)
-    return list(set(selected_symbols))
-
 # -------------------------------------------------------------------
 # Strategy Backtester Page
 # -------------------------------------------------------------------
@@ -373,8 +374,8 @@ def show_backtester_page():
     if 'selected_symbols' not in st.session_state:
         st.session_state.selected_symbols = []
     
-    if "pf" not in st.session_state:
-        st.session_state.pf = None
+    if "backtester_instance" not in st.session_state:
+        st.session_state.backtester_instance = None
     
     if "initialized_strategy" not in st.session_state:
         st.session_state.initialized_strategy = None
@@ -398,19 +399,20 @@ def show_backtester_page():
     st.markdown("---")
     # 3. Asset Selection
     with st.expander("🌍 Asset Universe", expanded=True):
-        asset_data = get_available_assets(timeframe)
-        tab1, tab2, tab3 = st.tabs(["Crypto", "Equities", "Commodities"])
-        
-        with tab1:
-            crypto_selection_widget(asset_data.get('Crypto', {}))
-        with tab2:
-            equity_selection_widget(asset_data.get('Indian Market', {}), 
-                                  asset_data.get('US Market', {}))
-        with tab3:
-            commodity_selection_widget(asset_data.get('Commodities', {}))
-        
-        st.divider()
-        display_selected_symbols()
+        with st.spinner("Loading Assets..."):
+            asset_data = get_available_assets(timeframe)
+            tab1, tab2, tab3 = st.tabs(["Crypto", "Equities", "Commodities"])
+            
+            with tab1:
+                crypto_selection_widget(asset_data.get('Crypto', {}))
+            with tab2:
+                equity_selection_widget(asset_data.get('Indian Market', {}), 
+                                    asset_data.get('US Market', {}))
+            with tab3:
+                commodity_selection_widget(asset_data.get('Commodities', {}))
+            
+            st.divider()
+            display_selected_symbols()
     
 
     st.markdown("---")
@@ -468,72 +470,54 @@ def show_backtester_page():
         
         progress_bar = st.progress(0)
         status_text = st.empty()
+
+        def update_progress(progress: int, status: str) -> None:
+            status_text.markdown(status)
+            progress_bar.progress(progress)
+            if progress >= 100:
+                progress_bar.empty()
+                status_text.empty()
         
         try:
-
-            status_text.markdown("📂 Loading market data...")
-            # Load OHLCV data for selected symbols using Finstore
-            binance_finstore = get_finstore('crypto_binance', timeframe=timeframe, pair='BTC')
-            ohlcv_data = binance_finstore.read.symbol_list(st.session_state.selected_symbols)
-            progress_bar.progress(25)
-
-            status_text.markdown("📡 Generating trading signals...")
-            # Generate strategy signals (replace with your actual implementation)
-            initialized_strategy = strategy_func(
+            update_progress(0, "📂 Loading market data...")
+            
+            strategy_instance = strategy_func(
                 params.get('fast_ema_period', 10),
                 params.get('slow_ema_period', 100)
             )
-            entries, exits, close_data, open_data = initialized_strategy.run(ohlcv_data)
-            st.session_state.initialized_strategy = initialized_strategy
-            progress_bar.progress(50)
-        
-            status_text.markdown("⚙️ Running backtest simulation...")
-            # Create the portfolio using the generated signals
-            pf = vbt.Portfolio.from_signals(
-                close=close_data,
-                open=open_data,
-                entries=entries,
-                exits=exits,
-                # Uncomment price='nextopen' if you want execution on next open
-                # price='nextopen',
-                direction='longonly',
+            
+            backtester = Backtester(
+                market_name='crypto_binance',
+                symbol_list=st.session_state.selected_symbols,
+                timeframe=timeframe,
+                strategy_object=strategy_instance,
+                strategy_type='multi',
+                start_date=pd.Timestamp(start_date),
+                end_date=pd.Timestamp(end_date),
                 init_cash=init_cash,
-                cash_sharing=True,
-                size=0.01,  # Adjust the allocation per trade as needed
-                size_type="valuepercent",
                 fees=fees,
                 slippage=slippage,
+                size=0.01,
+                cash_sharing=True,
                 allow_partial=allow_partial,
-                sim_start=pd.Timestamp(start_date)
+                progress_callback=update_progress,
+                pair='BTC'
             )
-            # Allow some time for the backtest to finish
-            progress_bar.progress(75)
-
-            if pf.stats():
-                progress_bar.progress(100)
-
-            progress_bar.empty()
-            status_text.empty()
-
-            st.session_state.pf = pf
-            st.session_state.backtest_metadata = {
-                "strategy": selected_module,
-                "parameters": params,
-                "assets": st.session_state.selected_symbols,
-                "timeframe": timeframe,
-                "start_date": start_date,
-                "end_date": end_date,
-                "initial_cash": init_cash,
-                "fees": fees,
-                "slippage": slippage,
-                "allow_partial": allow_partial
-            }
             
-            # Display Results
+            pf = backtester.portfolio
+            
+            update_progress(100, "✅ Backtest completed successfully!")
+            
+            st.session_state.backtester_instance = backtester
+            st.session_state.initialized_strategy = strategy_instance
             st.success("✅ Backtest completed successfully!")
+            
         except Exception as e:
             progress_bar.empty()
-            #status_text.error(f"❌ Backtest error : {str(e)}")
+            st.error(f"❌ Backtest failed: {str(e)}")
+            import traceback
+            print(traceback.print_exc())
+            print(e)
 
         # Assuming 'pf' is the portfolio object generated from your backtest
 
@@ -624,12 +608,11 @@ def show_backtester_page():
     save_filename = st.text_input("Enter filename to save (without extension):", value=f"{selected_module}_{timeframe}_{date.today()}")
 
     if st.button("Save Portfolio"):
-        if st.session_state.pf is None:
+        if st.session_state.backtester_instance is None:
             st.error("❌ No portfolio to save! Run a backtest first.")
         else:
             try:
-                st.session_state.initialized_strategy.save_backtest(pf = st.session_state.pf,
-                                                                    save_name = save_filename)
+                st.session_state.backtester_instance.save_backtest(save_name = save_filename)
 
                 st.success(f"✅ Portfolio saved successfully as database/backtest/{save_filename}")
             except Exception as e:

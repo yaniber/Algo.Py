@@ -125,6 +125,7 @@ class Backtester:
             self._validate_data_dates(ohlcv_dict)
         except Exception as e:
             self.progress_callback(10, f"Data read failed: {str(e)}. Fetching new data...")
+            print(f"Data read failed: {str(e)}. Fetching new data...")
             self.fetch_new_data()
             self.progress_callback(15, "Retrying data read...")
             ohlcv_dict = finstore.read.symbol_list(self.symbol_list)
@@ -141,14 +142,17 @@ class Backtester:
         """
         Validate that each symbol's data covers the required date range.
         """
-        for symbol, df in ohlcv_dict.items():
-            '''
-            if pd.Timestamp(df['timestamp'][0]) > self.start_date:
-                print(f"Warning: Data for {symbol} starts after backtest start date.")
-            if pd.Timestamp(df['timestamp'][-1]) < self.end_date:
-                print(f"Warning: Data for {symbol} ends before backtest end date.")
-            '''
-            print(f"df index : {df.index[0]}, df timestamp : {df['timestamp'][0]}")
+        try:
+            for symbol, original_df in ohlcv_dict.items():
+                df = original_df.copy()
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                if df['timestamp'].iloc[0] > self.start_date:
+                    print(f"Warning: Data for {symbol} starts after backtest start date.")
+
+                if df['timestamp'].iloc[-1] < self.end_date:
+                    print(f"Warning: Data for {symbol} ends before backtest end date.")
+        except Exception as e:
+            print(f'Error while validating dates : {e}')
 
     def fetch_new_data(self) -> None:
         """
@@ -166,14 +170,12 @@ class Backtester:
         self.progress_callback(15, f"Fetching {data_points} data points...")
         if self.market_name == 'crypto_binance':
             store_crypto_binance(
-                symbol_list=self.symbol_list,
                 timeframe=self.timeframe,
                 data_points_back=data_points,
                 suffix=self.pair
             )
         elif self.market_name == 'indian_equity':
             store_indian_equity(
-                symbol_list=self.symbol_list,
                 timeframe=self.timeframe,
                 data_points_back=data_points,
                 complete_list=False
@@ -197,10 +199,12 @@ class Backtester:
         }
         return tf_map.get(self.timeframe, self.timeframe)
 
-    def save_backtest(self, pf: vbt.Portfolio, save_name : str = None) -> None:
+    def save_backtest(self, pf: vbt.Portfolio = None, save_name : str = None) -> None:
         """
         Save the backtest results and parameters.
         """
+        if not pf:
+            pf = self.portfolio
         if save_name:
             backtest_id = save_name
         else:
@@ -247,7 +251,7 @@ class Backtester:
         trades = pf.trades.records_readable
         trades.to_parquet(save_dir / "trades.parquet")
 
-        self.progress_callback(95, "Backtest saved.")
+        self.progress_callback(100, "Backtest saved.")
 
 
 if __name__ == '__main__':
