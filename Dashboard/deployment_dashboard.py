@@ -220,21 +220,22 @@ def deployment_runner_process(deployment_id, config):
             "Binance": ("crypto_binance", config['oms']['config'])
         }
         oms_name, oms_params = oms_mapping.get(config['oms_type'], (None, None))
-        
         # Create Deployer instance
         if config['backtest_uuid']:
             try:
                 from deployment_engine.deployer import Deployer
                 deployer = Deployer.from_backtest_uuid(
                     backtest_uuid=config['backtest_uuid'],
-                    oms_name='Telegram',
-                    scheduler_type='fixed_interval',
-                    scheduler_interval='60',
-                    oms_params={}
+                    oms_name=oms_name,
+                    scheduler_type=config['scheduler_type'],
+                    scheduler_interval=str(config['scheduler_interval']),
+                    oms_params=oms_params,
+                    progress_callback=lambda p, s: append_log(deployment_id, f"PROGRESS: {p}% - {s}")
                 )
             except Exception as e:
                 st.error(f"Failed to load backtest: {str(e)}")
         else:
+            # TODO : Remove fees , slippage , etc and make size , cash sharing , start date, end date etc parameters more configurable.
             deployer = Deployer(
                 market_name=config['market_params']['market_name'],
                 symbol_list=config['asset_universe'],
@@ -405,15 +406,29 @@ def main():
         if query_params != {}:
             backtest_uuid = query_params.get("backtest_uuid", None)
             
-            # Load backtest config if UUID exists
-            preloaded_config = {
-                'market_name': query_params.get('market'),
-                'timeframe': query_params.get('timeframe'),
-                'symbol_list': query_params.get('symbols').split(','),
-                'strategy_name': query_params.get('strategy'),
-                'strategy_params': json.loads(query_params.get('strategy_params', None)),
-                'pair': query_params.get('pair')
-            }
+            if backtest_uuid:
+                try:
+                    from backtest_engine.backtester import Backtester
+                    _, params = Backtester.load_backtest(backtest_uuid)
+                    preloaded_config = {
+                        'market_name': params['market_name'],
+                        'timeframe': params['timeframe'],
+                        'symbol_list': params['symbol_list'],
+                        'strategy_name': params['strategy_name'],
+                        'strategy_params': params['strategy_params'],
+                        'pair': params['pair'],
+                        'init_cash': params['init_cash'],
+                        'size' : params['size'],
+                        'cash_sharing' : params['cash_sharing'],
+                        'allow_partial' : params['allow_partial']
+                    }
+                    st.session_state['preloaded_params'] = params['strategy_params']
+                except Exception as e:
+                    st.error(f"Error loading backtest: {str(e)}")
+        
+        if preloaded_config:
+            st.success("✨ Deployment parameters automagically pre-filled from backtest!")
+            st.markdown(f"**Loaded Backtest:** `{backtest_uuid}`")
 
         
         strategies = dynamic_strategy_loader()
@@ -515,8 +530,9 @@ def main():
                     return
                 
                 try:
+                    # TODO : Add more config details to fill when deploying
                     config = {
-                        "backtest_uuid" : backtest_uuid,
+                        "backtest_uuid": backtest_uuid if preloaded_config else None,
                         "strategy": selected_strategy,
                         "strategy_name" : 'EMA Crossover Strategy',
                         "strategy_func" : strategy_config['func'],

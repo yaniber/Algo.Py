@@ -696,13 +696,7 @@ def show_backtester_page():
                         
                         # Generate URL parameters for deployment dashboard
                         deploy_params = {
-                            'backtest_uuid': backtest_uuid,
-                            'market': params['market_name'],
-                            'timeframe': params['timeframe'],
-                            'symbols': ','.join(params['symbol_list']),
-                            'strategy': params['strategy_name'],
-                            'strategy_params': json.dumps(params['strategy_params']),
-                            'pair' : params['pair']
+                            'backtest_uuid': backtest_uuid
                         }
                         
                         # Generate URL (assumes deployment dashboard runs on port 8502)
