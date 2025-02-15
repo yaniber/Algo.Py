@@ -11,6 +11,7 @@ import os
 import json
 import signal
 from dotenv import load_dotenv
+from strategy.strategy_registry import STRATEGY_REGISTRY
 
 # ---------------------------
 # Setup persistent storage paths
@@ -34,16 +35,12 @@ STRATEGIES = {
 def dynamic_strategy_loader():
     """Dynamically load strategies with parameter inspection"""
     strategies = {}
-    try:
-        from strategy.public.ema_strategy import get_ema_signals_wrapper
-        strategies["EMA Crossover Strategy"] = {
-            "func": get_ema_signals_wrapper,
-            "params": get_strategy_params(get_ema_signals_wrapper)
+
+    for strategy_name, strategy_details in STRATEGY_REGISTRY.items():
+        strategies[strategy_name] = {
+            "func" : strategy_details['class'],
+            "params" : get_strategy_params(strategy_details['class'])
         }
-    except ImportError:
-        st.error("Could not load EMA strategy module")
-    
-    # Add other strategies similarly
     return strategies
 
 # ---------------------------
@@ -51,9 +48,9 @@ def dynamic_strategy_loader():
 # ---------------------------
 def get_strategy_params(func):
     """Improved parameter extraction with type handling"""
-    sig = inspect.signature(func)
+    sig = inspect.signature(func.__init__)
     params = {}
-    for name, param in list(sig.parameters.items())[2:]:  # Skip ohlcv_data and symbol_list
+    for name, param in list(sig.parameters.items())[1:]:  # Skip ohlcv_data and symbol_list
         param_info = {
             "type": param.annotation,
             "default": param.default if param.default != inspect.Parameter.empty else None
