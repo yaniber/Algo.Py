@@ -15,6 +15,8 @@ from strategy.strategy_registry import STRATEGY_REGISTRY
 import plotly.graph_objects as go
 import numpy as np
 import os
+from urllib.parse import urlencode
+import json
 
 # 📁 Directory structure for saving backtests
 SAVE_DIR = "saved_backtests"
@@ -688,7 +690,28 @@ def show_backtester_page():
                                 st.line_chart(pf.benchmark_cumulative_returns)
 
                     if deploy_col2.button("🚀 Deploy Strategy"):
-                        st.warning("⚡ Strategy Deployment Feature Coming Soon!")        
+                        # Get backtest UUID and parameters
+                        backtest_uuid = selected_backtest
+                        params = backtests[selected_backtest]
+                        
+                        # Generate URL parameters for deployment dashboard
+                        deploy_params = {
+                            'backtest_uuid': backtest_uuid,
+                            'market': params['market_name'],
+                            'timeframe': params['timeframe'],
+                            'symbols': ','.join(params['symbol_list']),
+                            'strategy': params['strategy_name'],
+                            'strategy_params': json.dumps(params['strategy_params'])
+                        }
+                        
+                        # Generate URL (assumes deployment dashboard runs on port 8502)
+                        base_url = "http://localhost:8501/"
+                        query_string = urlencode(deploy_params)
+                        deploy_url = f"{base_url}?{query_string}"
+                        
+                        # Open deployment dashboard in new tab
+                        js = f"window.open('{deploy_url}')"
+                        st.components.v1.html(f"<script>{js}</script>", height=0)     
 
 
 # Run the page

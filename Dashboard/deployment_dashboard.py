@@ -12,6 +12,8 @@ import json
 import signal
 from dotenv import load_dotenv
 from strategy.strategy_registry import STRATEGY_REGISTRY
+from finstore.finstore import Finstore
+import json
 
 # ---------------------------
 # Setup persistent storage paths
@@ -20,17 +22,16 @@ DEPLOYMENTS_FILE = "database/deployment/active_deployments.json"
 LOG_DIR = "database/deployment/logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
+@st.cache_resource
+def get_finstore(market_name, timeframe, pair=''):
+    return Finstore(market_name=market_name, timeframe=timeframe, pair=pair)
+
 # ---------------------------
 # Enhanced Strategy Modules
 # ---------------------------
-STRATEGIES = {
-    # Existing strategies
-    "EMA Crossover Strategy": {
-        "func": "strategy.public.ema_strategy.get_ema_signals_wrapper",
-        "params": {}
-    },
-    # New strategies can be added here
-}
+
+if 'preloaded_params' not in st.session_state:
+    st.session_state['preloaded_params'] = {}
 
 def dynamic_strategy_loader():
     """Dynamically load strategies with parameter inspection"""
@@ -73,24 +74,26 @@ def get_strategy_params(cls):
 # ---------------------------
 # Enhanced Asset Selection
 # ---------------------------
-def asset_selection_widget(market_name, timeframe):
+def asset_selection_widget(market_name, timeframe, default_symbols=None, default_pair_type=None):
     """Dynamic asset selection based on market type"""
     st.subheader("Asset Universe Selection")
     
     if market_name == "crypto_binance":
-        pair_type = st.radio("Pair Type:", ["USDT", "BTC"], horizontal=True)
-        from data.fetch.crypto_binance import fetch_symbol_list_binance
-        symbols = fetch_symbol_list_binance(suffix=pair_type)
+        pair_type = st.radio("Pair Type:", 
+                             ["USDT", "BTC"], 
+                             horizontal=True,
+                             index=1 if default_pair_type == "BTC" else 0)
+        symbols = get_finstore("crypto_binance", timeframe, pair=pair_type).read.get_symbol_list()
     elif market_name == "indian_equity":
-        from data.fetch.indian_equity import fetch_symbol_list_indian_equity
-        symbols = fetch_symbol_list_indian_equity()
+        symbols = get_finstore("indian_equity", timeframe, pair="").read.get_symbol_list()
     else:
         symbols = []
-    
+
+    valid_defaults = [s for s in (default_symbols or []) if s in symbols]
     selected = st.multiselect(
         "Select assets:", 
         options=symbols,
-        default=symbols[:5]  # Select first 5 by default
+        default=valid_defaults if valid_defaults != [] else symbols[:5]
     )
     return pair_type, selected
 
@@ -167,13 +170,6 @@ def serialize_deployment_config(config):
     serializable = config.copy()
     # Remove non-serializable entries
     if "strategy_func" in serializable:
-        # Safely get strategy name
-        matching_names = [
-            name for name, func in STRATEGIES.items() 
-            if func == serializable["strategy_func"]
-        ]
-        if not serializable['strategy_name']:
-            serializable["strategy_name"] = matching_names[0] if matching_names else "Unknown Strategy"
         del serializable["strategy_func"]
     if "oms_instance" in serializable:
         del serializable["oms_instance"]
@@ -390,8 +386,46 @@ def main():
     
     # New Deployment Form
     with st.expander("New Deployment Configuration", expanded=True):
+
+        # Get query parameters
+        query_params = st.query_params
+        print('------------------------', query_params)
+        backtest_uuid = query_params.get("backtest_uuid", None)
+        
+        # Load backtest config if UUID exists
+        preloaded_config = None
+        if backtest_uuid:
+            try:
+                from deployment_engine.deployer import Deployer
+                deployer = Deployer.from_backtest_uuid(
+                    backtest_uuid=backtest_uuid,
+                    oms_name='Telegram',  # Default value
+                    scheduler_type='fixed_interval',  # Default value
+                    scheduler_interval='60',
+                    oms_params={}
+                )
+                
+                preloaded_config = {
+                    'market_name': deployer.market_name,
+                    'timeframe': deployer.timeframe,
+                    'symbol_list': deployer.symbol_list,
+                    'strategy_name': deployer.strategy_object.display_name,
+                    'strategy_params': query_params.get('strategy_params', None),
+                    'pair': deployer.pair
+                }
+            except Exception as e:
+                st.error(f"Failed to load backtest: {str(e)}")
+        
         strategies = dynamic_strategy_loader()
-        selected_strategy = st.selectbox("Strategy", options=list(strategies.keys()))
+        #print('--------------', list(strategies.keys()).index(preloaded_config['strategy_name']) if preloaded_config else 0)
+        print('-------------', strategies)
+        print('--------------', preloaded_config['strategy_name'])
+        selected_strategy = st.selectbox(
+            "Strategy", 
+            options=list(strategies.keys()),
+            index=list(strategies.keys()).index(preloaded_config['strategy_name']) if preloaded_config else 0
+        )
+
         
         if selected_strategy:
             strategy_config = strategies[selected_strategy]
@@ -401,43 +435,64 @@ def main():
             st.subheader("Strategy Parameters")
             param_values = {}
             for param, info in params.items():
+                default_val = st.session_state['preloaded_params'].get(param, info["default"])
                 if info["type"] == int:
                     param_values[param] = st.number_input(
                         param.replace("_", " ").title(),
-                        value=info["default"],
+                        value=default_val,
                         min_value=info.get("min", 0),
                         step=info.get("step", 1)
                     )
                 elif info["type"] == float:
                     param_values[param] = st.number_input(
                         param.replace("_", " ").title(),
-                        value=info["default"],
+                        value=default_val,
                         step=info.get("step", 0.001)
                     )
                 elif info["type"] == bool:
                     param_values[param] = st.checkbox(
                         param.replace("_", " ").title(),
-                        value=info["default"]
+                        value=default_val
                     )
                 else:
                     param_values[param] = st.text_input(
                         param.replace("_", " ").title(),
-                        value=info["default"]
+                        value=default_val
                     )
             
             # Market Configuration
             st.subheader("Market Configuration")
+
+            if preloaded_config:
+                market_index = 0 if preloaded_config['market_name'] == "crypto_binance" else 1
+                timeframe_index = ["15m", "1h", "4h", "1d"].index(preloaded_config['timeframe'])
+            else:
+                market_index = 0
+                timeframe_index = 0
+            
             market_name = st.selectbox(
                 "Market", 
-                options=["crypto_binance", "indian_equity"]
+                options=["crypto_binance", "indian_equity"],
+                index=market_index
             )
             timeframe = st.selectbox(
                 "Timeframe", 
-                options=["15m", "1h", "4h", "1d"]
+                options=["15m", "1h", "4h", "1d"],
+                index=timeframe_index
             )
             
             # Asset Selection
-            pair , asset_universe = asset_selection_widget(market_name, timeframe)
+            pair, asset_universe = asset_selection_widget(
+                market_name, 
+                timeframe,
+                default_symbols=preloaded_config['symbol_list'] if preloaded_config else None,
+                default_pair_type=preloaded_config.get('pair') if preloaded_config else None
+            )
+
+            if preloaded_config:
+                st.session_state['preloaded_params'] = preloaded_config['strategy_params']
+            else:
+                st.session_state['preloaded_params'] = {}
             
             # OMS Configuration
             st.subheader("Order Management")
