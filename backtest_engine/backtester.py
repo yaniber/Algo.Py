@@ -106,7 +106,6 @@ class Backtester:
         )
 
         self.progress_callback(75, "Saving results...")
-        self.save_backtest(pf)
 
         self.progress_callback(100, "Backtest complete.")
         return pf
@@ -198,11 +197,14 @@ class Backtester:
         }
         return tf_map.get(self.timeframe, self.timeframe)
 
-    def save_backtest(self, pf: vbt.Portfolio) -> None:
+    def save_backtest(self, pf: vbt.Portfolio, save_name : str = None) -> None:
         """
         Save the backtest results and parameters.
         """
-        backtest_id = f"{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+        if save_name:
+            backtest_id = save_name
+        else:
+            backtest_id = f"{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         save_dir = Path("database/backtest") / backtest_id
         save_dir.mkdir(parents=True, exist_ok=True)
 

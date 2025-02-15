@@ -1,3 +1,46 @@
+# -------------------------------------------------------------------
+# Lazy Utils
+# -------------------------------------------------------------------
+
+import threading
+import importlib
+
+def lazy_import(module_name: str, global_vars: dict, alias: str = None):
+    """
+    Lazily imports a module in the background and assigns it to a global variable with an alias.
+    
+    Args:
+        module_name (str): The module name as a string.
+        alias (str): The alias to assign the module to.
+        global_vars (dict): The globals() dictionary where the module should be stored.
+    """
+    def import_in_background():
+        if alias:
+            global_vars[alias] = importlib.import_module(module_name)
+        else:
+            global_vars[module_name] = importlib.import_module(module_name)
+
+    threading.Thread(target=import_in_background, daemon=True).start()
+
+
+def lazy_execute(func, args=(), kwargs={}):
+    """
+    Executes a function in the background without blocking UI.
+
+    Args:
+        func (callable): The function to execute.
+        args (tuple): Positional arguments for the function.
+        kwargs (dict): Keyword arguments for the function.
+    """
+    def run_in_background():
+        func(*args, **kwargs)
+
+    threading.Thread(target=run_in_background, daemon=True).start()
+
+# -------------------------------------------------------------------
+# Imports
+# -------------------------------------------------------------------
+
 import streamlit as st
 import pandas as pd
 import inspect
@@ -6,8 +49,9 @@ from datetime import date
 import pickle
 import time
 from finstore.finstore import Finstore
-import vectorbtpro as vbt
+lazy_import("vectorbtpro", globals(), "vbt")
 from strategy.public.ema_strategy import get_ema_signals_wrapper
+from strategy.strategy_registry import STRATEGY_REGISTRY
 import plotly.graph_objects as go
 import numpy as np
 import os
@@ -15,6 +59,8 @@ import os
 # 📁 Directory structure for saving backtests
 SAVE_DIR = "saved_backtests"
 os.makedirs(SAVE_DIR, exist_ok=True)
+
+
 # -------------------------------------------------------------------
 # Cache functions to load data from Finstore
 # -------------------------------------------------------------------
@@ -35,11 +81,11 @@ def get_finstore(market_name, timeframe, pair=''):
 # -------------------------------------------------------------------
 def list_strategy_modules():
     """Return available strategy modules with their parameters"""
-    return {
-        'EMA Crossover Strategy': get_ema_signals_wrapper,
-        'RSI Strategy': dummy_rsi_strategy,
-        'MACD Strategy': dummy_macd_strategy
-    }
+    strategy_dict = {}
+    for strategy_name, strategy_details in STRATEGY_REGISTRY.items():
+        strategy_dict[strategy_name] = strategy_details['class']
+
+    return strategy_dict
 
 
 def dummy_rsi_strategy(ohlcv_data, symbol_list, rsi_period=14, oversold=30, overbought=70):
@@ -330,6 +376,9 @@ def show_backtester_page():
     if "pf" not in st.session_state:
         st.session_state.pf = None
     
+    if "initialized_strategy" not in st.session_state:
+        st.session_state.initialized_strategy = None
+    
     # 1. Timeframe Selection
     with st.container():
         col1, col2 = st.columns([1, 2])
@@ -368,10 +417,10 @@ def show_backtester_page():
     # 4. Strategy Parameters
     with st.expander("⚙️ Strategy Parameters", expanded=True):
         strategy_func = strategy_modules[selected_module]
-        sig = inspect.signature(strategy_func)
+        sig = inspect.signature(strategy_func.__init__)
         params = {}
         # Skip the first two parameters (ohlcv_data and symbol_list)
-        for param in list(sig.parameters.values())[2:]:
+        for param in list(sig.parameters.values())[1:]:
             if param.annotation == int:
                 val = st.number_input(
                     param.name,
@@ -430,12 +479,12 @@ def show_backtester_page():
 
             status_text.markdown("📡 Generating trading signals...")
             # Generate strategy signals (replace with your actual implementation)
-            entries, exits, close_data, open_data = strategy_func(
-                ohlcv_data, 
-                st.session_state.selected_symbols, 
+            initialized_strategy = strategy_func(
                 params.get('fast_ema_period', 10),
                 params.get('slow_ema_period', 100)
             )
+            entries, exits, close_data, open_data = initialized_strategy.run(ohlcv_data)
+            st.session_state.initialized_strategy = initialized_strategy
             progress_bar.progress(50)
         
             status_text.markdown("⚙️ Running backtest simulation...")
@@ -579,17 +628,10 @@ def show_backtester_page():
             st.error("❌ No portfolio to save! Run a backtest first.")
         else:
             try:
-                save_path = os.path.join(SAVE_DIR, f"{save_filename}.pkl")
+                st.session_state.initialized_strategy.save_backtest(pf = st.session_state.pf,
+                                                                    save_name = save_filename)
 
-                portfolio_data = {
-                    "portfolio": st.session_state.pf,
-                    **st.session_state.backtest_metadata
-                }
-
-                with open(save_path, "wb") as f:
-                    pickle.dump(portfolio_data, f)
-
-                st.success(f"✅ Portfolio saved successfully as {save_path}")
+                st.success(f"✅ Portfolio saved successfully as database/backtest/{save_filename}")
             except Exception as e:
                 st.error(f"❌ Error while saving: {e}")
 
