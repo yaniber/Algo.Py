@@ -77,7 +77,6 @@ class Deployer:
             from OMS.telegram import Telegram
             group_id = self.oms_params.get('group_id')
             self.oms = Telegram(group_id=group_id)
-            print(group_id)
         elif self.oms_name == 'crypto_binance':
             from OMS.crypto_binance import BinanceOMS
             api_key = self.oms_params.get('api_key')
@@ -258,6 +257,9 @@ class Deployer:
             storage_file = f"database/backtest/{self.backtest_uuid}/past_positions.parquet"
         else:
             storage_file = f"database/backtest/{uuid.uuid4()}/past_positions.parquet"
+        
+        storage_dir = Path(storage_file).parent
+        storage_dir.mkdir(parents=True, exist_ok=True)
         
         trade_monitor = TradeMonitor(storage_file=storage_file)
         
