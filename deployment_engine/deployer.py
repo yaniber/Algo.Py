@@ -93,6 +93,14 @@ class Deployer:
         oms_name: str,
         scheduler_type: str,
         scheduler_interval: str,
+        start_date: Optional[pd.Timestamp] = None,
+        end_date: Optional[pd.Timestamp] = None,
+        init_cash: Optional[float] = None,
+        fees: Optional[float] = 0.0,
+        slippage: Optional[float] = 0.0,
+        size: Optional[float] = None,
+        cash_sharing: Optional[bool] = False,
+        allow_partial: Optional[bool] = False,
         oms_params: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
     ) -> "Deployer":
@@ -113,10 +121,16 @@ class Deployer:
         
         strategy_object = strategy_cls(**strategy_params)
         
-        # Parse dates
-        start_date = pd.Timestamp(data["start_date"])
-        end_date = pd.Timestamp(data["end_date"])
-        
+        # Override values only if input parameters are provided; otherwise, use backtest data
+        start_date = start_date or pd.Timestamp(data["start_date"])
+        end_date = end_date or pd.Timestamp(data["end_date"])
+        init_cash = init_cash if init_cash is not None else float(data["init_cash"])
+        fees = fees if fees is not None else float(data["fees"])
+        slippage = slippage if slippage is not None else float(data["slippage"])
+        size = size if size is not None else float(data["size"])
+        cash_sharing = cash_sharing if cash_sharing is not None else bool(data["cash_sharing"])
+        allow_partial = allow_partial if allow_partial is not None else bool(data["allow_partial"])
+
         return cls(
             backtest_uuid=backtest_uuid,
             market_name=data["market_name"],
@@ -128,12 +142,12 @@ class Deployer:
             strategy_type=data["strategy_type"],
             start_date=start_date,
             end_date=end_date,
-            init_cash=data["init_cash"],
-            fees=data["fees"],
-            slippage=data["slippage"],
-            size=data["size"],
-            cash_sharing=data["cash_sharing"],
-            allow_partial=data["allow_partial"],
+            init_cash=init_cash,
+            fees=fees,
+            slippage=slippage,
+            size=size,
+            cash_sharing=cash_sharing,
+            allow_partial=allow_partial,
             progress_callback=progress_callback,
             oms_name=oms_name,
             pair=data.get("pair"),

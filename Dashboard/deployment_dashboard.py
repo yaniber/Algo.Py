@@ -168,8 +168,6 @@ def oms_config_widget(oms_type):
 def serialize_deployment_config(config):
     serializable = config.copy()
     # Remove non-serializable entries
-    if "strategy_func" in serializable:
-        del serializable["strategy_func"]
     if "oms_instance" in serializable:
         del serializable["oms_instance"]
     if "strategy_object" in serializable:
@@ -229,6 +227,14 @@ def deployment_runner_process(deployment_id, config):
                     oms_name=oms_name,
                     scheduler_type=config['scheduler_type'],
                     scheduler_interval=str(config['scheduler_interval']),
+                    start_date = pd.Timestamp(config['deployer_params'].get('start_date')) if config['deployer_params'].get('start_date') else None,
+                    end_date=pd.Timestamp.now() + pd.Timedelta(days=2),
+                    init_cash=int(config['deployer_params'].get('init_cash', 100000)),
+                    fees=0,
+                    slippage=0,
+                    size=int(config['deployer_params'].get('size', 1)),
+                    cash_sharing=bool(config['deployer_params'].get('cash_sharing', False)),
+                    allow_partial=bool(config['deployer_params'].get('allow_partial', False)),
                     oms_params=oms_params,
                     progress_callback=lambda p, s: append_log(deployment_id, f"PROGRESS: {p}% - {s}")
                 )
@@ -244,14 +250,14 @@ def deployment_runner_process(deployment_id, config):
                 scheduler_interval=str(config['scheduler_interval']),
                 strategy_object=config['strategy_object'],
                 strategy_type=config['strategy_name'],
-                start_date=pd.Timestamp.now() - pd.Timedelta(days=365),
-                end_date=pd.Timestamp.now(),
-                init_cash=10000,
-                fees=0.0005,
-                slippage=0.001,
-                size=0.01,
-                cash_sharing=True,
-                allow_partial=False,
+                start_date=config['deployer_params'].get('start_date'),
+                end_date=pd.Timestamp.now() + pd.Timedelta(days=2),
+                init_cash=int(config['deployer_params'].get('init_cash')),
+                fees=0,
+                slippage=0,
+                size=int(config['deployer_params'].get('size')),
+                cash_sharing=bool(config['deployer_params'].get('cash_sharing')),
+                allow_partial=bool(config['deployer_params'].get('allow_partial')),
                 oms_name=oms_name,
                 pair=config['market_params'].get('pair'),
                 oms_params=oms_params,
@@ -516,6 +522,36 @@ def main():
             
             # Scheduler Configuration
             scheduler = scheduler_config_widget()
+
+            # Additional Deployment Settings
+            st.subheader("Additional Deployment Settings")
+
+            init_cash = st.number_input(
+                "Initial Cash", 
+                value=float(preloaded_config['init_cash']) if preloaded_config else 100000.0, 
+                step=10.0
+            )
+
+            start_date = st.text_input(
+                "Start Time (YYYY-MM-DD HH:MM:SS)", 
+                value=str(pd.Timestamp.now() - pd.Timedelta(days=3))
+            )
+
+            size = st.number_input(
+                "Position Size", 
+                value=float(preloaded_config['size']) if preloaded_config else 1.0, 
+                step=0.001
+            )
+
+            cash_sharing = st.checkbox(
+                "Cash Sharing", 
+                value=float(preloaded_config['cash_sharing']) if preloaded_config else False
+            )
+
+            allow_partial = st.checkbox(
+                "Allow Partial Execution", 
+                value=float(preloaded_config['allow_partial']) if preloaded_config else False
+            )
             
             if st.button("Deploy Strategy"):
                 if not asset_universe:
@@ -533,26 +569,24 @@ def main():
                     # TODO : Add more config details to fill when deploying
                     config = {
                         "backtest_uuid": backtest_uuid if preloaded_config else None,
-                        "strategy": selected_strategy,
-                        "strategy_name" : 'EMA Crossover Strategy',
-                        "strategy_func" : strategy_config['func'],
+                        "strategy_name" : selected_strategy,
                         "strategy_object": strategy_instance,
                         "oms_type" : oms_type,
                         "strategy_params" : param_values,
                         "params": param_values,
-                        "market": {
-                            "name": market_name,
-                            "timeframe": timeframe
+                        "scheduler_type" : scheduler['type'],
+                        "scheduler_interval" : scheduler['value'],
+                        "deployer_params" : {
+                            "init_cash" : init_cash,
+                            "start_date" : start_date,
+                            "size" : size,
+                            "cash_sharing" : cash_sharing,
+                            "allow_partial" : allow_partial,
                         },
-                        "assets": asset_universe,
-                        "asset_universe": asset_universe,
                         "oms": {
                             "type": oms_type,
                             "config": oms_config
                         },
-                        "scheduler": scheduler,
-                        "scheduler_type" : scheduler['type'],
-                        "scheduler_interval" : scheduler['value'],
                         "market_params" : {
                             "market_name" : market_name,
                             "timeframe" : timeframe,
