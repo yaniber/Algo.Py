@@ -47,7 +47,7 @@ def order_entry(binance_oms, market_type):
             
             with col1:
                 symbol = st.text_input("Symbol", "BTCUSDT").upper()
-                order_type = st.selectbox("Order Type", ["MARKET", "LIMIT"])
+                order_type = st.selectbox("Order Type", ["MARKET", "LIMIT"], key="order_type_selector")
                 
             with col2:
                 side = st.radio("Side", ["BUY", "SELL"], horizontal=True)
@@ -55,12 +55,12 @@ def order_entry(binance_oms, market_type):
                 
             with col3:
                 if order_type == "LIMIT":
-                    price = st.number_input("Price", min_value=0.0, value=0.0)
-                    use_chaser = st.checkbox("Use Limit Order Chaser", 
-                                           help="Dynamically adjust limit order price to improve fill chances")
+                    price = st.number_input("Price", min_value=0.0, value=0.0, key="limit_price")
+                    use_chaser = False
                 else:
                     price = None
-                    use_chaser = False
+                    use_chaser = st.checkbox("Use Limit Order Chaser", 
+                                        help="Dynamically adjust limit order price to improve fill chances")
                     
                 if market_type == "Futures":
                     quantity_type = st.radio("Quantity Type", ["CONTRACTS", "USD"], horizontal=True)
@@ -78,7 +78,7 @@ def order_entry(binance_oms, market_type):
             
             if submit_order:
                 try:
-                    if use_chaser and order_type == "LIMIT":
+                    if use_chaser and order_type == "MARKET":
                         # Use limit order chaser
                         chaser_params = {
                             'symbol': symbol,
