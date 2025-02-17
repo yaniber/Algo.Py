@@ -11,7 +11,6 @@ from fake_websocket import symbol_trade_data  # Ensure this is correctly importe
 # ------------------------------------
 # 1. Set Up Live Updates Without Full Page Refresh
 # ------------------------------------
-st.set_page_config(page_title="Live Strategy Monitor", layout="wide")
 
 # Initialize session state for live updates
 if "latest_scores" not in st.session_state:

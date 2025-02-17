@@ -699,14 +699,26 @@ def show_backtester_page():
                             'backtest_uuid': backtest_uuid
                         }
                         
-                        # Generate URL (assumes deployment dashboard runs on port 8502)
-                        base_url = "http://localhost:8501/"
                         query_string = urlencode(deploy_params)
-                        deploy_url = f"{base_url}?{query_string}"
-                        
-                        # Open deployment dashboard in new tab
-                        js = f"window.open('{deploy_url}')"
-                        st.components.v1.html(f"<script>{js}</script>", height=0)     
+
+                        js = f"""
+                                <script>
+                                    // Get the full URL
+                                    var fullUrl = window.location.href;
+
+                                    // Extract base path by removing everything after the last '/'
+                                    var basePath = fullUrl.substring(0, fullUrl.lastIndexOf('/'));
+
+                                    // Construct the deployment URL
+                                    var deployUrl = basePath + "/strategy_deployment?{query_string}";
+
+                                    // Open in a new tab
+                                    window.open(deployUrl, "_blank");
+                                </script>
+                            """
+
+                        # Execute JavaScript in Streamlit
+                        st.components.v1.html(js, height=0)
 
 
 # Run the page

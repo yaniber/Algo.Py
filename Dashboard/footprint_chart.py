@@ -474,7 +474,6 @@ def start_websocket_thread(trade_queue: queue.Queue):
 # 3) STREAMLIT APP
 ###############################################
 def main():
-    st.set_page_config(page_title="Live Binance Footprint Chart", layout="wide")
     #st.title("BTC/USDT Footprint Chart - Live from Binance")
 
     # Controls
@@ -560,5 +559,4 @@ def main():
         time.sleep(1)  # Slow down loop to reduce overhead
 
 
-if __name__ == "__main__":
-    main()
+main()

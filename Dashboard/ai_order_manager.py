@@ -698,7 +698,6 @@ def adjust_quantity(symbol, amount):
         return None  # Return None instead of an error string
 
 def main():
-    st.set_page_config(page_title="AI Trading Agent", layout="wide")
     executor = AgentEnvironment()
     
     # Initialize session state
@@ -830,5 +829,5 @@ def main():
             st.session_state.pending_action = None
             st.rerun()
 
-if __name__ == "__main__":
-    main()
+
+main()

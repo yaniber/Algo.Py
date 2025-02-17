@@ -84,12 +84,6 @@ if st.session_state.ws_thread is None or not st.session_state.ws_thread.is_alive
     st.session_state.ws_thread = threading.Thread(target=start_websocket, daemon=True)
     st.session_state.ws_thread.start()
 
-# Dashboard Layout
-st.set_page_config(
-    layout="wide",
-    page_title="BTC/USDT Professional Trading View",
-    initial_sidebar_state="expanded"
-)
 
 # Control panel
 with st.sidebar:

@@ -1,0 +1,69 @@
+[[pages]]
+path = "index.py"
+name = "Algo.Py Dashboard"
+icon = "🏠"
+
+[[pages]]
+name = "Strategy Management"
+icon = "📈"
+is_section = true
+
+[[pages]]
+path = "strategy_backtest.py"
+name = "Strategy Backtest"
+icon = "📊"
+
+[[pages]]
+path = "strategy_deployment.py"
+name = "Strategy Deployment"
+icon = "🚀"
+
+[[pages]]
+path = "strategy_monitor.py"
+name = "Strategy Monitor"
+icon = "📈"
+
+[[pages]]
+name = "Order Management"
+icon = "🤖"
+is_section = true
+
+[[pages]]
+path = "ai_order_manager.py"
+name = "AI Order Manager"
+icon = "🎯"
+
+[[pages]]
+path = "order_management_system.py"
+name = "OMS"
+icon = "⚙️"
+
+[[pages]]
+path = "risk_management_system.py"
+name = "Risk Management"
+icon = "🛡️"
+
+[[pages]]
+name = "Market Data"
+icon = "📊"
+is_section = true
+
+[[pages]]
+path = "live_dom_chart.py"
+name = "Live DOM"
+icon = "📈"
+
+[[pages]]
+path = "static_dom_chart.py"
+name = "Static DOM"
+icon = "📊"
+
+[[pages]]
+path = "footprint_chart.py"
+name = "Footprint"
+icon = "👣"
+
+[[pages]]
+path = "data_utils.py"
+name = "Data Utils"
+icon = "🔧"

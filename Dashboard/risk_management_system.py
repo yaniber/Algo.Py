@@ -140,11 +140,6 @@ def calculate_portfolio_metrics(exchanges):
 
 # Dashboard UI
 def main():
-    st.set_page_config(
-        page_title="Global Risk Management System",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
     
     st.title("🌍 Global Risk Dashboard")
     st.markdown("---")
@@ -237,5 +232,5 @@ def main():
         if st.button("🔄 Refresh System Status"):
             st.experimental_rerun()
 
-if __name__ == "__main__":
-    main()
+
+main()

@@ -11,13 +11,6 @@ def initialize_binance():
         st.error(f"Failed to initialize Binance OMS: {str(e)}")
         return None
 
-# Page configuration
-st.set_page_config(
-    page_title="Custom Trading Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # Sidebar configuration
 def sidebar_controls():
     with st.sidebar:
@@ -237,5 +230,4 @@ def main():
         st.write("Recent Successful Orders:", binance_oms.successful_orders[-3:])
         st.write("Recent Failed Orders:", binance_oms.failed_orders[-3:])
 
-if __name__ == "__main__":
-    main()
+main()

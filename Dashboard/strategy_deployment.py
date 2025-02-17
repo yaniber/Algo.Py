@@ -16,6 +16,72 @@ from finstore.finstore import Finstore
 import json
 
 # ---------------------------
+# Live Deployment Fragment
+# ---------------------------
+@st.fragment(run_every=2000)  # Update every 2 seconds
+def live_deployments(manager):
+    """Fragment for real-time deployment monitoring"""
+    # Use empty containers for dynamic updates
+    status_container = st.container()
+    controls_container = st.container()
+    log_container = st.container()
+    
+    with status_container:
+        st.subheader("Active Deployments")
+        if not manager.deployments:
+            st.info("No active deployments")
+            return
+
+        # Deployment Status Cards
+        for dep_id, dep in list(manager.deployments.items()):
+            cols = st.columns([1, 2, 1, 1])
+            with cols[0]:
+                st.markdown(f"**{dep_id}**")
+                status = dep.get("status", "unknown")
+                color = {"running": "🟢", "stopped": "🔴", "error": "🟠"}.get(status, "⚪")
+                st.markdown(f"{color} **{status.title()}**")
+            
+            with cols[1]:
+                st.caption(f"Strategy: {dep['config'].get('strategy_name', 'Unknown')}")
+                st.caption(f"Market: {dep['config']['market_params']['market_name']}")
+
+    with controls_container:
+        # Interactive Controls
+        for dep_id, dep in list(manager.deployments.items()):
+            cols = st.columns([3, 1, 1])
+            with cols[1]:
+                if st.button("📋 Logs", key=f"logs_{dep_id}"):
+                    st.session_state[f"show_logs_{dep_id}"] = not st.session_state.get(f"show_logs_{dep_id}", False)
+            with cols[2]:
+                if st.button("⏹ Stop", key=f"stop_{dep_id}"):
+                    with st.spinner(f"Stopping {dep_id}..."):
+                        manager.stop_deployment(dep_id)
+                        st.rerun()
+
+    with log_container:
+        # Dynamic Log Display
+        for dep_id in manager.deployments:
+            if st.session_state.get(f"show_logs_{dep_id}"):
+                with st.expander(f"Logs for {dep_id}", expanded=True):
+                    log_content = read_log(dep_id)
+                    if log_content:
+                        st.download_button(
+                            label="Download Full Log",
+                            data=log_content,
+                            file_name=f"{dep_id}_logs.txt",
+                            key=f"dl_{dep_id}"
+                        )
+                        st.code("\n".join(log_content.split("\n")[-50:]))
+                    else:
+                        st.warning("No logs available")
+
+    # Clear button outside containers
+    if st.button("🧹 Clear Stopped Deployments"):
+        with st.spinner("Cleaning up..."):
+            manager._cleanup_zombies()
+            st.rerun()
+
+# ---------------------------
 # Setup persistent storage paths
 # ---------------------------
 DEPLOYMENTS_FILE = "database/deployment/active_deployments.json"
@@ -399,290 +465,222 @@ def format_log_entry(log_line):
 # ---------------------------
 # Main Dashboard UI
 # ---------------------------
-def main():
-    st.title("🚀 Strategy Deployment Dashboard")
-    manager = DeploymentManager()
+st.title("🚀 Strategy Deployment Dashboard")
+manager = DeploymentManager()
+
+# New Deployment Form
+with st.expander("New Deployment Configuration", expanded=True):
+
+    # Get query parameters
+    query_params = st.query_params
+    preloaded_config = None
+    if query_params != {}:
+        backtest_uuid = query_params.get("backtest_uuid", None)
+        
+        if backtest_uuid:
+            try:
+                from backtest_engine.backtester import Backtester
+                _, params = Backtester.load_backtest(backtest_uuid)
+                preloaded_config = {
+                    'market_name': params['market_name'],
+                    'timeframe': params['timeframe'],
+                    'symbol_list': params['symbol_list'],
+                    'strategy_name': params['strategy_name'],
+                    'strategy_params': params['strategy_params'],
+                    'pair': params['pair'],
+                    'init_cash': params['init_cash'],
+                    'size' : params['size'],
+                    'cash_sharing' : params['cash_sharing'],
+                    'allow_partial' : params['allow_partial']
+                }
+                st.session_state['preloaded_params'] = params['strategy_params']
+            except Exception as e:
+                st.error(f"Error loading backtest: {str(e)}")
     
-    # New Deployment Form
-    with st.expander("New Deployment Configuration", expanded=True):
+    if preloaded_config:
+        st.success("✨ Deployment parameters automagically pre-filled from backtest!")
+        st.markdown(f"**Loaded Backtest:** `{backtest_uuid}`")
 
-        # Get query parameters
-        query_params = st.query_params
-        preloaded_config = None
-        if query_params != {}:
-            backtest_uuid = query_params.get("backtest_uuid", None)
-            
-            if backtest_uuid:
-                try:
-                    from backtest_engine.backtester import Backtester
-                    _, params = Backtester.load_backtest(backtest_uuid)
-                    preloaded_config = {
-                        'market_name': params['market_name'],
-                        'timeframe': params['timeframe'],
-                        'symbol_list': params['symbol_list'],
-                        'strategy_name': params['strategy_name'],
-                        'strategy_params': params['strategy_params'],
-                        'pair': params['pair'],
-                        'init_cash': params['init_cash'],
-                        'size' : params['size'],
-                        'cash_sharing' : params['cash_sharing'],
-                        'allow_partial' : params['allow_partial']
-                    }
-                    st.session_state['preloaded_params'] = params['strategy_params']
-                except Exception as e:
-                    st.error(f"Error loading backtest: {str(e)}")
+    
+    strategies = dynamic_strategy_loader()
+    selected_strategy = st.selectbox(
+        "Strategy", 
+        options=list(strategies.keys()),
+        index=list(strategies.keys()).index(preloaded_config['strategy_name']) if preloaded_config else 0
+    )
+
+    
+    if selected_strategy:
+        strategy_config = strategies[selected_strategy]
+        params = strategy_config["params"]
         
+        # Dynamic parameter inputs
+        st.subheader("Strategy Parameters")
+        param_values = {}
+        for param, info in params.items():
+            default_val = preloaded_config['strategy_params'].get(param, info["default"]) if preloaded_config else info["default"]
+            if info["type"] == int:
+                param_values[param] = st.number_input(
+                    param.replace("_", " ").title(),
+                    value=default_val,
+                    min_value=info.get("min", 0),
+                    step=info.get("step", 1)
+                )
+            elif info["type"] == float:
+                param_values[param] = st.number_input(
+                    param.replace("_", " ").title(),
+                    value=default_val,
+                    step=info.get("step", 0.001)
+                )
+            elif info["type"] == bool:
+                param_values[param] = st.checkbox(
+                    param.replace("_", " ").title(),
+                    value=default_val
+                )
+            else:
+                param_values[param] = st.text_input(
+                    param.replace("_", " ").title(),
+                    value=default_val
+                )
+        
+        # Market Configuration
+        st.subheader("Market Configuration")
+
         if preloaded_config:
-            st.success("✨ Deployment parameters automagically pre-filled from backtest!")
-            st.markdown(f"**Loaded Backtest:** `{backtest_uuid}`")
-
+            market_index = 0 if preloaded_config['market_name'] == "crypto_binance" else 1
+            timeframe_index = ["15m", "1h", "4h", "1d"].index(preloaded_config['timeframe'])
+        else:
+            market_index = 0
+            timeframe_index = 0
         
-        strategies = dynamic_strategy_loader()
-        selected_strategy = st.selectbox(
-            "Strategy", 
-            options=list(strategies.keys()),
-            index=list(strategies.keys()).index(preloaded_config['strategy_name']) if preloaded_config else 0
+        market_name = st.selectbox(
+            "Market", 
+            options=["crypto_binance", "indian_equity"],
+            index=market_index
+        )
+        timeframe = st.selectbox(
+            "Timeframe", 
+            options=["15m", "1h", "4h", "1d"],
+            index=timeframe_index
+        )
+        
+        # Asset Selection
+        pair, asset_universe = asset_selection_widget(
+            market_name, 
+            timeframe,
+            default_symbols=preloaded_config['symbol_list'] if preloaded_config else None,
+            default_pair_type=preloaded_config.get('pair') if preloaded_config else None
         )
 
+        if preloaded_config:
+            st.session_state['preloaded_params'] = preloaded_config['strategy_params']
+        else:
+            st.session_state['preloaded_params'] = {}
         
-        if selected_strategy:
-            strategy_config = strategies[selected_strategy]
-            params = strategy_config["params"]
-            
-            # Dynamic parameter inputs
-            st.subheader("Strategy Parameters")
-            param_values = {}
-            for param, info in params.items():
-                default_val = preloaded_config['strategy_params'].get(param, info["default"]) if preloaded_config else info["default"]
-                if info["type"] == int:
-                    param_values[param] = st.number_input(
-                        param.replace("_", " ").title(),
-                        value=default_val,
-                        min_value=info.get("min", 0),
-                        step=info.get("step", 1)
-                    )
-                elif info["type"] == float:
-                    param_values[param] = st.number_input(
-                        param.replace("_", " ").title(),
-                        value=default_val,
-                        step=info.get("step", 0.001)
-                    )
-                elif info["type"] == bool:
-                    param_values[param] = st.checkbox(
-                        param.replace("_", " ").title(),
-                        value=default_val
-                    )
-                else:
-                    param_values[param] = st.text_input(
-                        param.replace("_", " ").title(),
-                        value=default_val
-                    )
-            
-            # Market Configuration
-            st.subheader("Market Configuration")
+        # OMS Configuration
+        st.subheader("Order Management")
+        oms_type = st.selectbox(
+            "OMS Type", 
+            options=["Telegram", "Zerodha", "Binance"]
+        )
+        oms_config = oms_config_widget(oms_type)
+        
+        # Scheduler Configuration
+        scheduler = scheduler_config_widget()
 
-            if preloaded_config:
-                market_index = 0 if preloaded_config['market_name'] == "crypto_binance" else 1
-                timeframe_index = ["15m", "1h", "4h", "1d"].index(preloaded_config['timeframe'])
-            else:
-                market_index = 0
-                timeframe_index = 0
-            
-            market_name = st.selectbox(
-                "Market", 
-                options=["crypto_binance", "indian_equity"],
-                index=market_index
-            )
-            timeframe = st.selectbox(
-                "Timeframe", 
-                options=["15m", "1h", "4h", "1d"],
-                index=timeframe_index
-            )
-            
-            # Asset Selection
-            pair, asset_universe = asset_selection_widget(
-                market_name, 
-                timeframe,
-                default_symbols=preloaded_config['symbol_list'] if preloaded_config else None,
-                default_pair_type=preloaded_config.get('pair') if preloaded_config else None
-            )
+        # Additional Deployment Settings
+        st.subheader("Additional Deployment Settings")
 
-            if preloaded_config:
-                st.session_state['preloaded_params'] = preloaded_config['strategy_params']
-            else:
-                st.session_state['preloaded_params'] = {}
-            
-            # OMS Configuration
-            st.subheader("Order Management")
-            oms_type = st.selectbox(
-                "OMS Type", 
-                options=["Telegram", "Zerodha", "Binance"]
-            )
-            oms_config = oms_config_widget(oms_type)
-            
-            # Scheduler Configuration
-            scheduler = scheduler_config_widget()
+        init_cash = st.number_input(
+            "Initial Cash", 
+            value=float(preloaded_config['init_cash']) if preloaded_config else 100000.0, 
+            step=10.0
+        )
 
-            # Additional Deployment Settings
-            st.subheader("Additional Deployment Settings")
+        start_date = st.text_input(
+            "Start Time (YYYY-MM-DD HH:MM:SS)", 
+            value=str(pd.Timestamp.now() - pd.Timedelta(days=3))
+        )
 
-            init_cash = st.number_input(
-                "Initial Cash", 
-                value=float(preloaded_config['init_cash']) if preloaded_config else 100000.0, 
-                step=10.0
-            )
+        size = st.number_input(
+            "Position Size", 
+            value=float(preloaded_config['size']) if preloaded_config else 1.0, 
+            step=0.001
+        )
 
-            start_date = st.text_input(
-                "Start Time (YYYY-MM-DD HH:MM:SS)", 
-                value=str(pd.Timestamp.now() - pd.Timedelta(days=3))
-            )
+        cash_sharing = st.checkbox(
+            "Cash Sharing", 
+            value=float(preloaded_config['cash_sharing']) if preloaded_config else False
+        )
 
-            size = st.number_input(
-                "Position Size", 
-                value=float(preloaded_config['size']) if preloaded_config else 1.0, 
-                step=0.001
-            )
-
-            cash_sharing = st.checkbox(
-                "Cash Sharing", 
-                value=float(preloaded_config['cash_sharing']) if preloaded_config else False
-            )
-
-            allow_partial = st.checkbox(
-                "Allow Partial Execution", 
-                value=float(preloaded_config['allow_partial']) if preloaded_config else False
-            )
-            
-            if st.button("Deploy Strategy"):
-                if not asset_universe:
-                    st.error("Please select at least one asset")
-                    return
+        allow_partial = st.checkbox(
+            "Allow Partial Execution", 
+            value=float(preloaded_config['allow_partial']) if preloaded_config else False
+        )
+        
+        if st.button("Deploy Strategy"):
+            if not asset_universe:
+                st.error("Please select at least one asset")
                 
-                strategy_cls = strategy_config['func']
-                try:
-                    strategy_instance = strategy_cls(**param_values)
-                except Exception as e:
-                    st.error(f"Strategy initialization failed: {str(e)}")
-                    return
+            
+            strategy_cls = strategy_config['func']
+            try:
+                strategy_instance = strategy_cls(**param_values)
+            except Exception as e:
+                st.error(f"Strategy initialization failed: {str(e)}")
                 
-                try:
-                    # TODO : Add more config details to fill when deploying
-                    config = {
-                        "backtest_uuid": backtest_uuid if preloaded_config else None,
-                        "strategy_name" : selected_strategy,
-                        "strategy_object": strategy_instance,
-                        "oms_type" : oms_type,
-                        "strategy_params" : param_values,
-                        "params": param_values,
-                        "scheduler_type" : scheduler['type'],
-                        "scheduler_interval" : scheduler['value'],
-                        "deployer_params" : {
-                            "init_cash" : init_cash,
-                            "start_date" : start_date,
-                            "size" : size,
-                            "cash_sharing" : cash_sharing,
-                            "allow_partial" : allow_partial,
-                        },
-                        "oms": {
-                            "type": oms_type,
-                            "config": oms_config
-                        },
-                        "market_params" : {
-                            "market_name" : market_name,
-                            "timeframe" : timeframe,
-                            "pair" : pair,
-                            "asset_universe" : asset_universe 
-                        }
+            
+            try:
+                # TODO : Add more config details to fill when deploying
+                config = {
+                    "backtest_uuid": backtest_uuid if preloaded_config else None,
+                    "strategy_name" : selected_strategy,
+                    "strategy_object": strategy_instance,
+                    "oms_type" : oms_type,
+                    "strategy_params" : param_values,
+                    "params": param_values,
+                    "scheduler_type" : scheduler['type'],
+                    "scheduler_interval" : scheduler['value'],
+                    "deployer_params" : {
+                        "init_cash" : init_cash,
+                        "start_date" : start_date,
+                        "size" : size,
+                        "cash_sharing" : cash_sharing,
+                        "allow_partial" : allow_partial,
+                    },
+                    "oms": {
+                        "type": oms_type,
+                        "config": oms_config
+                    },
+                    "market_params" : {
+                        "market_name" : market_name,
+                        "timeframe" : timeframe,
+                        "pair" : pair,
+                        "asset_universe" : asset_universe 
                     }
+                }
 
-                    if oms_type == "Telegram":
-                        config['oms']['config'] = {'chat_id': oms_config['chat_id']}
-                    elif oms_type == "Zerodha":
-                        config['oms']['config'] = {
-                            'userid': oms_config['userid'],
-                            'password': oms_config['password'],
-                            'totp': oms_config['totp']
-                        }
-                    elif oms_type == "Binance":
-                        config['oms']['config'] = {
-                            'api_key': oms_config['api_key'],
-                            'api_secret': oms_config['api_secret']
-                        }
-                    
-                    deployment_id = manager.start_deployment(config)
-                    st.success(f"Deployment {deployment_id} started successfully!")
+                if oms_type == "Telegram":
+                    config['oms']['config'] = {'chat_id': oms_config['chat_id']}
+                elif oms_type == "Zerodha":
+                    config['oms']['config'] = {
+                        'userid': oms_config['userid'],
+                        'password': oms_config['password'],
+                        'totp': oms_config['totp']
+                    }
+                elif oms_type == "Binance":
+                    config['oms']['config'] = {
+                        'api_key': oms_config['api_key'],
+                        'api_secret': oms_config['api_secret']
+                    }
                 
-                except Exception as e:
-                    st.error(f"Deployment failed: {str(e)}")
-    
-        # Live Deployments Fragment
-    live_deployments(manager)
-
-# ---------------------------
-# Live Deployment Fragment
-# ---------------------------
-@st.fragment(run_every=2000)  # Update every 2 seconds
-def live_deployments(manager):
-    """Fragment for real-time deployment monitoring"""
-    # Use empty containers for dynamic updates
-    status_container = st.container()
-    controls_container = st.container()
-    log_container = st.container()
-    
-    with status_container:
-        st.subheader("Active Deployments")
-        if not manager.deployments:
-            st.info("No active deployments")
-            return
-
-        # Deployment Status Cards
-        for dep_id, dep in list(manager.deployments.items()):
-            cols = st.columns([1, 2, 1, 1])
-            with cols[0]:
-                st.markdown(f"**{dep_id}**")
-                status = dep.get("status", "unknown")
-                color = {"running": "🟢", "stopped": "🔴", "error": "🟠"}.get(status, "⚪")
-                st.markdown(f"{color} **{status.title()}**")
+                deployment_id = manager.start_deployment(config)
+                st.success(f"Deployment {deployment_id} started successfully!")
             
-            with cols[1]:
-                st.caption(f"Strategy: {dep['config'].get('strategy_name', 'Unknown')}")
-                st.caption(f"Market: {dep['config']['market_params']['market_name']}")
+            except Exception as e:
+                st.error(f"Deployment failed: {str(e)}")
 
-    with controls_container:
-        # Interactive Controls
-        for dep_id, dep in list(manager.deployments.items()):
-            cols = st.columns([3, 1, 1])
-            with cols[1]:
-                if st.button("📋 Logs", key=f"logs_{dep_id}"):
-                    st.session_state[f"show_logs_{dep_id}"] = not st.session_state.get(f"show_logs_{dep_id}", False)
-            with cols[2]:
-                if st.button("⏹ Stop", key=f"stop_{dep_id}"):
-                    with st.spinner(f"Stopping {dep_id}..."):
-                        manager.stop_deployment(dep_id)
-                        st.rerun()
+    # Live Deployments Fragment
+live_deployments(manager)
 
-    with log_container:
-        # Dynamic Log Display
-        for dep_id in manager.deployments:
-            if st.session_state.get(f"show_logs_{dep_id}"):
-                with st.expander(f"Logs for {dep_id}", expanded=True):
-                    log_content = read_log(dep_id)
-                    if log_content:
-                        st.download_button(
-                            label="Download Full Log",
-                            data=log_content,
-                            file_name=f"{dep_id}_logs.txt",
-                            key=f"dl_{dep_id}"
-                        )
-                        st.code("\n".join(log_content.split("\n")[-50:]))
-                    else:
-                        st.warning("No logs available")
 
-    # Clear button outside containers
-    if st.button("🧹 Clear Stopped Deployments"):
-        with st.spinner("Cleaning up..."):
-            manager._cleanup_zombies()
-            st.rerun()
-
-if __name__ == "__main__":
-    main()
