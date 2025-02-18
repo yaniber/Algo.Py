@@ -30,7 +30,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code into the container
 COPY . .
 
-# Install BTengine in editable mode
 RUN pip install --quiet --no-cache-dir \
     'plotly>=5.0.0' \
     'kaleido'
@@ -88,16 +87,11 @@ RUN pip install --quiet --no-cache-dir \
 RUN pip install --quiet --no-cache-dir --no-deps 'universal-portfolios'
 RUN pip install --quiet --no-cache-dir 'pandas_datareader'
 
-# Install Jupyter and ipykernel
 RUN pip install --quiet --no-cache-dir jupyter ipykernel
 
-# Add the Python environment as a Jupyter kernel
 RUN python -m ipykernel install --user --name=python3 --display-name "Python 3"
 
-# Set the PYTHONPATH environment variable
 ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Command to keep the container running
 CMD ["tail", "-f", "/dev/null"]
-
-# might need to add apt update && apt install -y python3 python3-dev g++ pybind11-dev

@@ -1,12 +1,12 @@
 version: '3'
 services:
   app:
-    container_name: quantipy_app
+    container_name: algopy_app
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"  # Assuming your app runs on port 5000
+      - "5000:5000"
     volumes:
       - .:/app  # Mount the current directory to /app in the container
-      - ./database/db:/app/database/db  # Mount the volume for SQLite database
+      - ./database/db:/app/database/db  # Mount the volume for finstore database
