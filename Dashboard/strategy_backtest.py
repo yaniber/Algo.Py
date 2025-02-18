@@ -155,7 +155,7 @@ def handle_other_selection(commodities_data):
 # Enhanced Asset Selection Components
 # -------------------------------------------------------------------
 def crypto_selection_widget(crypto_data):
-    st.subheader("🪙 Crypto Asset Selection")
+    st.subheader("💰 Crypto Asset Selection")
     col1, col2 = st.columns([1, 3])
     
     with col1:

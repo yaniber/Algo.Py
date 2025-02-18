@@ -18,6 +18,7 @@ class Backtester:
     """
 
     BACKTEST_DIR = Path("database/backtest")
+    BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 
     def __init__(
         self,
