@@ -19,3 +19,5 @@ dask-expr==1.1.16
 streamlit-autorefresh==1.0.1
 cloudscraper==1.2.71
 binance-connector==3.11.0
+google-generativeai==0.8.4
+st-pages==1.0.1

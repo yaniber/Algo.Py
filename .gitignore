@@ -7,8 +7,12 @@ strategy/private/*
 *.log
 .pytest_cache/
 database/db/*
+database/deployment/*
+database/backtest/*
 database/finstore/*
 BTengine/*
 documentation/*
+deploy_logs/*
+.vscode
 *.db*
 to-do.txt

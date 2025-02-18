@@ -502,6 +502,23 @@ class Binance(OMS):
             *args, **kwargs: Arguments for the `limit_order_chaser_post_only` method.
         """
         return self.executor.submit(self.limit_order_chaser, *args, **kwargs)
+
+    # Add this to your Binance class in binance_oms.py
+    def get_futures_balance(self, asset: str = 'USDT'):
+        try:
+            futures_account = self.client.futures_account()
+            balances = futures_account['assets']
+            for balance in balances:
+                if balance['asset'] == asset:
+                    return {
+                        'asset': asset,
+                        'available': float(balance['availableBalance']),
+                        'total': float(balance['walletBalance'])
+                    }
+            raise ValueError(f"{asset} balance not found in futures account")
+        except BinanceAPIException as e:
+            self.telegram.send_telegram_message(f"Failed to fetch futures balance: {e}")
+            return None
     
 
 

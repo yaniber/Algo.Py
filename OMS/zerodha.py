@@ -10,19 +10,8 @@ from dotenv import load_dotenv
 import pandas as pd
 from OMS.telegram import Telegram
 
-class Zerodha(OMS):
-    _instance = None  # Class-level attribute to hold the singleton instance
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(Zerodha, cls).__new__(cls)
-        return cls._instance
-    
+class Zerodha(OMS):   
     def __init__(self, userid: str = None, password: str = None, totp: str = None):
-
-        if hasattr(self, '_initialized') and self._initialized:
-            # Prevents reinitialization if the instance already exists
-            return
         
         if not userid or not password or not totp:
             load_dotenv(dotenv_path='config/.env')
@@ -44,8 +33,6 @@ class Zerodha(OMS):
         self.telegram = Telegram()
         self.successful_orders = []
         self.failed_orders = []
-
-        self._initialized = True
     
     def iterate_orders_df(self, orders: pd.DataFrame) -> tuple[list, list]:
         if not orders.empty:
@@ -133,7 +120,42 @@ class Zerodha(OMS):
         pass 
     
     def get_positions(self):
-        pass 
+        try:
+            # Fetch positions
+            positions = self.kite.positions()["net"]
+            positions_df = pd.DataFrame(positions)
+
+            if not positions_df.empty:
+                positions_df = positions_df[["tradingsymbol", "quantity", "average_price", "last_price", "pnl"]]
+                positions_df.rename(columns={
+                    "tradingsymbol": "Symbol",
+                    "quantity": "Size",
+                    "average_price": "Entry Price",
+                    "last_price": "Mark Price",
+                    "pnl": "PnL"
+                }, inplace=True)
+
+            # Fetch holdings
+            holdings = self.kite.holdings()
+            holdings_df = pd.DataFrame(holdings)
+
+            if not holdings_df.empty:
+                holdings_df = holdings_df[["tradingsymbol", "quantity", "average_price", "last_price", "pnl"]]
+                holdings_df.rename(columns={
+                    "tradingsymbol": "Symbol",
+                    "quantity": "Size",
+                    "average_price": "Entry Price",
+                    "last_price": "Mark Price",
+                    "pnl": "PnL"
+                }, inplace=True)
+
+            return {"positions": positions_df, "holdings": holdings_df}
+
+        except Exception as e:
+            self.telegram.send_telegram_message(f"Failed to fetch positions and holdings: {e}")
+            print(f"Failed to fetch positions and holdings: {e}")
+            return {"positions": pd.DataFrame(), "holdings": pd.DataFrame()}
+
     
     def get_pnl(self):
         pass 
@@ -148,7 +170,8 @@ class Zerodha(OMS):
 if __name__ == '__main__':
     zerodha = Zerodha()
     print(zerodha.get_available_balance())
-    zerodha2 = Zerodha()
-    print(zerodha2.get_available_balance())
+    #zerodha2 = Zerodha()
+    #print(zerodha2.get_available_balance())
+    print(zerodha.get_positions())
     
     
