@@ -3,14 +3,14 @@ import streamlit as st
 from st_pages import add_page_title, get_nav_from_toml
 
 st.set_page_config(
-    page_title="Trading Dashboard Suite",
+    page_title="Algo.Py",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 nav = get_nav_from_toml(
-    "Dashboard_integration/pages.toml"
+    "Dashboard/pages.toml"
 )
 
 st.logo(image="assets/logo.png", size="large", icon_image="assets/logo.png")
