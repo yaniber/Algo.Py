@@ -1,10 +1,10 @@
-<img src="https://raw.githubusercontent.com/himanshu2406/QuantiPy/175c0b959180d2f26c4b6854fdd3ba032ad27d91/assets/header_grad.svg" width="100%">
+<img src="https://raw.githubusercontent.com/himanshu2406/Algo.Py/175c0b959180d2f26c4b6854fdd3ba032ad27d91/assets/header_grad.svg" width="100%">
 
 **An advanced quantitative trading library for Python.** 🔥  
 
-[![GitHub Issues](https://img.shields.io/github/issues/himanshu2406/QuantiPy)](https://github.com/himanshu2406/QuantiPy/issues)
-[![GitHub Stars](https://img.shields.io/github/stars/himanshu2406/QuantiPy)](https://github.com/himanshu2406/QuantiPy/stargazers)
-[![GitHub License](https://img.shields.io/github/license/himanshu2406/QuantiPy)](LICENSE)
+[![GitHub Issues](https://img.shields.io/github/issues/himanshu2406/Algo.Py)](https://github.com/himanshu2406/Algo.Py/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/himanshu2406/Algo.Py)](https://github.com/himanshu2406/Algo.Py/stargazers)
+[![GitHub License](https://img.shields.io/github/license/himanshu2406/Algo.Py)](LICENSE)
 
 ---
 
@@ -31,27 +31,21 @@
 ---
 
 ## 🚀 **Installation**
-To install **QuantiPy**, run:
+To setup **Algo.Py**, run:
 
 ```bash
-pip install quantipy
-```
-
-OR, for manual installation:
-
-```bash
-git clone https://github.com/himanshu2406/QuantiPy.git
-cd QuantiPy
-pip install -r requirements.txt
+git clone https://github.com/himanshu2406/Algo.Py.git
+cd Algo.Py
+docker compose up -d
 ```
 
 ---
 
 ## ⚡ **Quick Start**
-Here’s how you can use **QuantiPy** in your project:
+Here’s how you can use **Algo.Py** in your project:
 
 ```python
-import quantipy
+import Algo.Py
 
 # Placeholder code example
 ```
@@ -69,10 +63,10 @@ For detailed documentation, check **[the docs](#)** 📚
 
 ## 📂 **Project Structure**
 ```
-QuantiPy/
+Algo.py/
 │-- assets/              # Images, logos, headers
 │-- docs/                # Documentation
-│-- quantipy/            # Core library
+│-- Algo.Py/            # Core library
 │   ├── modules/         # Submodules
 │   ├── utils.py         # Helper functions
 │   ├── config.py        # Configurations
@@ -85,7 +79,7 @@ QuantiPy/
 ---
 
 ## 📈 **Examples**
-Here are some use cases for **QuantiPy**:
+Here are some use cases for **Algo.Py**:
 
 1. **Example 1** - *Placeholder*  
 2. **Example 2** - *Placeholder*  
@@ -120,8 +114,8 @@ We welcome contributions! To contribute:
 2. **Clone** your forked repo:
 
    ```bash
-   git clone https://github.com/your-username/QuantiPy.git
-   cd QuantiPy
+   git clone https://github.com/your-username/Algo.Py.git
+   cd Algo.Py
    ```
 
 3. **Create a new branch**:
