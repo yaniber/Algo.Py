@@ -19,6 +19,8 @@ RUN wget https://netcologne.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-li
 
 RUN rm -R ta-lib ta-lib-0.4.0-src.tar.gz
 
+RUN pip install --no-cache-dir TA-Lib==0.4.32
+
 # Copy the requirements file into the container
 COPY requirements.txt .
 
@@ -85,7 +87,6 @@ RUN pip install --quiet --no-cache-dir \
 
 RUN pip install --quiet --no-cache-dir --no-deps 'universal-portfolios'
 RUN pip install --quiet --no-cache-dir 'pandas_datareader'
-RUN pip install -e ./BTengine
 
 # Install Jupyter and ipykernel
 RUN pip install --quiet --no-cache-dir jupyter ipykernel
