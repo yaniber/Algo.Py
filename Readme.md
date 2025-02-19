@@ -77,6 +77,9 @@ git clone https://github.com/himanshu2406/Algo.Py.git
 cd Algo.Py
 docker compose up -d
 ```
+📺 **Watch the YouTube tutorial for a step-by-step installation guide:**  
+[![Watch the tutorial](https://img.youtube.com/vi/J_krHhmF_No/0.jpg)](https://youtu.be/J_krHhmF_No?si=9mp6IVCd7dwXb3ju)  
+
 
 ---
 
