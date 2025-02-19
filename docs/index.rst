@@ -1,15 +1,15 @@
-Welcome to Algo.Py's Documentation!
-===================================
+.. include:: ../Readme.md
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   getting-started
+   installation
+   quickstart
+   finstore
+   strategy_development
+   deployment
    features
-
-Indices and Tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   configuration
+   advanced_topics
+   api-reference
