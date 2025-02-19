@@ -24,9 +24,38 @@
 ---
 
 ## ✨ **Features**
-✅ **Feature 1** - *Placeholder for feature description*  
-✅ **Feature 2** - *Placeholder for feature description*  
-✅ **Feature 3** - *Placeholder for feature description*  
+
+### 🚀 Effortless Backtesting & Deployment  
+- **One-Click Backtests**: Execute complex backtests with a single command.  
+- **Instant Deployment**: Seamlessly deploy backtested strategies to live markets with zero code changes.  
+- **Lightning-Fast Engine**: Optimized for speed, enabling high-frequency strategy testing in seconds.  
+
+### 🧠 Advanced Algorithmic Strategy Development  
+- Build sophisticated strategies using Python, with support for **live data streaming integration**.  
+- Test and deploy strategies across historical and real-time data streams simultaneously.  
+
+### 📊 Custom Data Layer  
+- Unified data interface for **quick fetching, storing, and retrieving** market data.  
+- Supports tick, candle, and bulk historical data across equities, crypto, and derivatives.  
+
+### 🌍 Multi-Broker & Market Support  
+- **Markets**: Crypto (BTC, ETH, etc.), Indian (NSE, BSE), US (NYSE, NASDAQ), and more.  
+- **Brokers**: Integrated with Binance, Zerodha, Interactive Brokers, and custom broker APIs.  
+
+### 🤖 Intelligent OMS & RMS  
+- **Smart OMS**:  
+  - Advanced order types with **market order chaser** to minimize taker fees.  
+  - AI-Powered OMS: Interact naturally (e.g., "Close 50% of my BTC position") via chat.  
+- **Risk Management (RMS)**:  
+  - Real-time alerts for portfolio anomalies (e.g., margin breaches, unusual drawdowns).  
+  - Automated position sizing and exposure checks.  
+
+### 📈 Live Trading Dashboards  
+- Advanced charting tools:  
+  - **Footprint Charts**: Visualize order flow and liquidity.  
+  - **DOM (Depth of Market)**: Real-time ladder for limit order analysis.  
+  - **Volume Bubbles**: Track liquidity hotspots and market sentiment.  
+- Monitor live trades, P&L, and strategy performance in a unified interface.  
 
 ---
 
@@ -42,12 +71,12 @@ docker compose up -d
 ---
 
 ## ⚡ **Quick Start**
-Here’s how you can use **Algo.Py** in your project:
+Here’s how you can start **Algo.Py Dashboard**:
 
-```python
-import Algo.Py
+```bash
+docker exec -it algopy_app bash
 
-# Placeholder code example
+streamlit run Dashboard/main_dash.py
 ```
 
 ---
@@ -63,17 +92,53 @@ For detailed documentation, check **[the docs](#)** 📚
 
 ## 📂 **Project Structure**
 ```
-Algo.py/
-│-- assets/              # Images, logos, headers
-│-- docs/                # Documentation
-│-- Algo.Py/            # Core library
-│   ├── modules/         # Submodules
-│   ├── utils.py         # Helper functions
-│   ├── config.py        # Configurations
-│-- tests/               # Unit tests
-│-- examples/            # Example scripts
-│-- LICENSE
-│-- README.md
+algo.py/
+│── assets/
+│── backtest_engine/
+│── config/
+│   │── __init__.py
+│   │── example.env
+│── Dashboard/
+│── data/
+│   │── __pycache__/
+│   │── calculate/
+│   │── fetch/
+│   │── gather/
+│   │── store/
+│   │── stream/
+│   │── update/
+│   │── visualisation/
+│   │── __init__.py
+│── database/
+│   │── backtest/
+│   │── db/
+│   │── logs/
+│   │── __init__.py
+│── deployment_engine/
+│── examples/
+│── executor/
+│── finstore/
+│── logger/
+│── OMS/
+│── saved_backtests/
+│── scheduler/
+│── scripts/
+│── strategy/
+│── system/
+│── tests/
+│── utils/
+│   │── __pycache__/
+│   │── calculation/
+│   │── data/
+│   │── db/
+│   │── flows/
+│   │── notifier/
+│   │── visualisation/
+│   │── __init__.py
+│   │── api.py
+│   │── decorators.py
+│── Dockerfile
+│── docker-compose.yml
 ```
 
 ---
@@ -101,10 +166,10 @@ Modify the `config.json` file to customize settings:
 
 ## 📝 **Roadmap**
 📌 **Planned Features**:
-- [ ] Feature 1  
-- [ ] Feature 2  
-- [ ] Feature 3  
-
+- [ ] AI Backtesting Agent   
+- [ ] AI Trading journal
+- [ ] Support for more brokers
+- [ ] Migration to React / better UI
 ---
 
 ## 🤝 **Contributing**
@@ -114,7 +179,7 @@ We welcome contributions! To contribute:
 2. **Clone** your forked repo:
 
    ```bash
-   git clone https://github.com/your-username/Algo.Py.git
+   git clone https://github.com/himanshu2406/Algo.Py.git
    cd Algo.Py
    ```
 
