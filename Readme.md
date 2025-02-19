@@ -204,7 +204,10 @@ We welcome contributions! To contribute:
 ---
 
 ## 📜 **License**
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+**AlgoPy is licensed under the AlgoPy Personal Use License.**
+- ✅ Free for personal & research use.
+- ❌ Cannot be used in paid products, SaaS, hedge funds, or financial firms without a commercial license.
+- 📝 See the [LICENSE] file for details.
 
 ---
 
