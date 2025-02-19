@@ -212,8 +212,8 @@ We welcome contributions! To contribute:
 ---
 
 ## 📬 **Contact**
-📧 Email: **your-email@example.com**  
+📧 Email: **himanshuclash@gmail.com**  
 🐦 Twitter: [@yourhandle](https://twitter.com/yourhandle)  
-📌 LinkedIn: [Your Profile](https://linkedin.com/in/yourname)  
+📌 LinkedIn: [Your Profile](https://www.linkedin.com/in/rathore-himanshu/)  
 
 ---
