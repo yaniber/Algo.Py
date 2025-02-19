@@ -10,7 +10,7 @@ All strategies are built upon the `StrategyBaseClass`, located in `strategy/stra
 
 1. **Inherit from `StrategyBaseClass`**
 
-::
+.. code-block:: python
 
     from strategy.strategy_builder import StrategyBaseClass
     import pandas as pd
@@ -58,9 +58,10 @@ All strategies are built upon the `StrategyBaseClass`, located in `strategy/stra
    - **`close_data`**: A DataFrame containing the closing prices of each symbol.
    - **`open_data`**: A DataFrame containing the opening prices of each symbol.
 
-   .. note::
-      The index of all returned DataFrames *must* be aligned. It's recommended to use the timestamp from the input `ohlcv_data` as the index.  
-      The columns of the DataFrames must be the symbols.
+.. note::
+
+   The index of all returned DataFrames *must* be aligned. It's recommended to use the timestamp from the input `ohlcv_data` as the index.  
+   The columns of the DataFrames must be the symbols.
 
 3. **Define Parameters in `__init__`**
 
