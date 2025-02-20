@@ -27,6 +27,7 @@ class Finstore:
         Lists all items in the directory for the given market and timeframe.
         """
         dir_path = os.path.join(self.base_directory, f"market_name={self.market_name}", f"timeframe={self.timeframe}")
+        os.makedirs(dir_path, exist_ok=True)
         try:
             items = os.listdir(dir_path)
             print(f"Len items in '{dir_path}': {len(items)}")

@@ -230,13 +230,8 @@ class Deployer:
         if self.progress_callback:
             self.progress_callback(30, "Fetching OHLCV data")
         
-        ohlcv_data = fetch_entries(
-            market_name=self.market_name,
-            timeframe=self.timeframe,
-            symbol_list=self.symbol_list,
-            all_entries=False,
-            pair=self.pair
-        )
+        finstore = Finstore(market_name=self.market_name, timeframe=self.timeframe, enable_append=True, pair=self.pair)
+        ohlcv_data = finstore.read.symbol_list(symbol_list=self.symbol_list, merged_dataframe=False)
         
         if self.progress_callback:
             self.progress_callback(50, "Running strategy")
