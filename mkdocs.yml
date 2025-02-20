@@ -1,0 +1,99 @@
+site_name: Algo.Py Documentation
+site_url: https://your-domain.com
+repo_url: https://github.com/himanshu2406/Algo.Py
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.expand
+    - navigation.sections
+    - toc.integrate
+    - header.autohide
+    - search.highlight
+    - search.suggest
+    - content.code.annotate
+    - navigation.top
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.arithmatex:
+      generic: true
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - social
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          selection:
+            filters:
+              - "!^_"  # Exclude private members
+          rendering:
+            show_source: false
+
+extra:
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/himanshu2406
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/himanshu
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/rathore-himanshu/
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Quickstart Guide: quickstart.md
+  - Core Features:
+      - FinStore: finstore.md
+      - Strategy Development: strategy_development.md
+      - Deployment: deployment.md
+      - Features Overview: features.md
+  - Configuration:
+      - Basic Configuration: configuration.md
+      - Advanced Topics: advanced_topics.md
+  - API Reference: api-reference/index.md
+
+extra_css:
+  - assets/css/custom.css
+
+extra_javascript:
+  - assets/js/custom.js
+
+copyright: |
+  &copy; 2025 <a href="https://github.com/himanshu2406"  target="_blank" rel="noopener">Algo.Py</a>

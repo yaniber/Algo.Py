@@ -1,7 +1,0 @@
-# Core
-sphinx>=7.0
-sphinx-rtd-theme
-numpydoc
-myst-parser
-sphinx-autodoc-typehints
-sphinx-copybutton
