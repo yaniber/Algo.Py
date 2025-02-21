@@ -4,6 +4,9 @@
 
 **algo.py** is a robust, Python-first algorithmic trading framework designed for traders, developers, and institutions to build, test, and deploy trading strategies with unparalleled speed and flexibility. Built for modern markets, it bridges the gap between strategy ideation and live execution by combining a lightning-fast backtesting engine, a unified data layer, and broker-agnostic deployment tools.  
 
+🔹 **Join the official Discord Server:** [Click here](https://discord.gg/tpFrXJYFsf)  
+🎥 **View Algo.Py's Tutorials:** [Watch on YouTube](https://www.youtube.com/watch?v=J_krHhmF_No&list=PLzFdtaNfzY4USYC9UYjTz5hgHrJjNwGZS) 
+
 The framework empowers users to:  
 - **Accelerate strategy development** with live data streaming, multi-market/crypto support, and Python-native tools.  
 - **Eliminate friction** between backtesting and live trading via one-click workflows.  
@@ -11,9 +14,6 @@ The framework empowers users to:
 - **Visualize markets** through institutional-grade charts (footprint, DOM, volume bubbles) and live dashboards.  
 
 Whether you're automating a simple moving average strategy or building high-frequency arbitrage bots for crypto, **algo.py** provides the infrastructure, speed, and intelligence to trade confidently across global markets.  
-
-🔹 **Join the official Discord Server:** [Click here](https://discord.gg/tpFrXJYFsf)  
-🎥 **View Algo.Py's Tutorials:** [Watch on YouTube](https://www.youtube.com/watch?v=J_krHhmF_No&list=PLzFdtaNfzY4USYC9UYjTz5hgHrJjNwGZS) 
 
 [![GitHub Issues](https://img.shields.io/github/issues/himanshu2406/Algo.Py)](https://github.com/himanshu2406/Algo.Py/issues)
 [![GitHub Stars](https://img.shields.io/github/stars/himanshu2406/Algo.Py)](https://github.com/himanshu2406/Algo.Py/stargazers)
