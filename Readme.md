@@ -12,6 +12,9 @@ The framework empowers users to:
 
 Whether you're automating a simple moving average strategy or building high-frequency arbitrage bots for crypto, **algo.py** provides the infrastructure, speed, and intelligence to trade confidently across global markets.  
 
+🔹 **Join the official Discord Server:** [Click here](https://discord.gg/tpFrXJYFsf)  
+🎥 **View Algo.Py's Tutorials:** [Watch on YouTube](https://www.youtube.com/watch?v=J_krHhmF_No&list=PLzFdtaNfzY4USYC9UYjTz5hgHrJjNwGZS) 
+
 [![GitHub Issues](https://img.shields.io/github/issues/himanshu2406/Algo.Py)](https://github.com/himanshu2406/Algo.Py/issues)
 [![GitHub Stars](https://img.shields.io/github/stars/himanshu2406/Algo.Py)](https://github.com/himanshu2406/Algo.Py/stargazers)
 [![GitHub License](https://img.shields.io/github/license/himanshu2406/Algo.Py)](LICENSE)
