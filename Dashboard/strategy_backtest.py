@@ -390,8 +390,9 @@ def show_backtester_page():
             end_date = st.date_input("End Date", value=date(2026, 1, 1))
         
         init_cash = st.number_input("Initial Capital", value=100000)
-        fees = st.number_input("Trading Fees (%)", step=0.000001, value=0.0005)
-        slippage = st.number_input("Slippage (%)", step=0.000001, value=0.001)
+        fees = st.number_input("Trading Fees (%)", step=0.0001, value=0.0005, format="%.6f")
+        slippage = st.number_input("Slippage (%)", step=0.0001, value=0.001, format="%.6f")
+        size = st.number_input("Size (%)", step=0.01, value=0.01, format="%.6f")
         # Convert the string selection to a boolean
         allow_partial_str = st.selectbox(
             "Allow Partial ? (Usually set True for crypto):",
@@ -399,6 +400,12 @@ def show_backtester_page():
             index=0
         )
         allow_partial = True if allow_partial_str == "True" else False
+        cash_sharing_str = st.selectbox(
+            "Allow Cash Sharing ? (All assets will share the same cash):",
+            options=["True", "False"],
+            index=0
+        )
+        cash_sharing = True if cash_sharing_str == "True" else False
 
     # 6. Run Backtest
     if st.button("🚀 Run Backtest", use_container_width=True):
@@ -421,10 +428,7 @@ def show_backtester_page():
             from backtest_engine.backtester import Backtester
             update_progress(10, "📂 Loading market data...")
             
-            strategy_instance = strategy_func(
-                params.get('fast_ema_period', 10),
-                params.get('slow_ema_period', 100)
-            )
+            strategy_instance = strategy_func(**params)
             
             backtester = Backtester(
                 market_name='crypto_binance',
@@ -437,8 +441,8 @@ def show_backtester_page():
                 init_cash=init_cash,
                 fees=fees,
                 slippage=slippage,
-                size=0.01,
-                cash_sharing=True,
+                size=size,
+                cash_sharing=cash_sharing,
                 allow_partial=allow_partial,
                 progress_callback=update_progress,
                 pair='BTC'
