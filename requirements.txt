@@ -24,3 +24,4 @@ st-pages==1.0.1
 mkdocs==1.6.1
 mkdocs-material==9.6.5
 mkdocstrings==0.28.1
+streamlit-aggrid==1.1.0
