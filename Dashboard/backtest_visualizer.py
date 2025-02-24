@@ -6,9 +6,6 @@ from urllib.parse import urlencode
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from finstore.finstore import Finstore
 
-st.set_page_config(page_title="Trade Analyzer", layout="wide")
-st.title("📈 Backtest Trade Analyzer")
-
 @st.cache_resource
 def get_finstore(market_name, timeframe, pair=''):
     return Finstore(market_name=market_name, timeframe=timeframe, pair=pair)
@@ -42,10 +39,6 @@ with st.expander("📂 Load Previous Backtest", expanded=True):
                     st.write("**Strategy Parameters:**")
                     st.json(params["strategy_params"])
 
-
-                # 📊 Performance Metrics
-                
-                # 📊 Performance Metrics
                 st.subheader("📊 Performance Metrics")
                 col1, col2, col3 = st.columns(3)
                 col1.metric(label="📈 Returns", value=f"{params['performance']['returns']:.2%}")
@@ -89,7 +82,6 @@ if "pf" in st.session_state:
     )
     st.plotly_chart(fig_cum)
 
-    # 📌 Trade Signals: Use AgGrid for an interactive, sortable table.
     st.subheader("📌 Trade Signals")
     gb = GridOptionsBuilder.from_dataframe(trades_df)
     gb.configure_selection(selection_mode="single", use_checkbox=True)
@@ -111,8 +103,6 @@ if "pf" in st.session_state:
     else:
         st.session_state.selected_trade = None
 
-
-    # Only show the button if a row is selected.
     if st.session_state.selected_trade is not None:
         if st.button("View Chart for Selected Trade"):
             current_trade = st.session_state.selected_trade
@@ -126,8 +116,19 @@ if "pf" in st.session_state:
             _, ohlcv_data = get_finstore("crypto_binance", timeframe, pair="BTC").read.symbol(trade_pair)
             ohlcv_data["timestamp"] = pd.to_datetime(ohlcv_data["timestamp"])
 
+            # Calculate ATR on the full OHLCV data with a rolling window of 14
+            ohlcv_data['prev_close'] = ohlcv_data['close'].shift(1)
+            ohlcv_data['tr'] = ohlcv_data.apply(
+                lambda row: max(
+                    row['high'] - row['low'],
+                    abs(row['high'] - row['prev_close']) if pd.notnull(row['prev_close']) else 0,
+                    abs(row['low'] - row['prev_close']) if pd.notnull(row['prev_close']) else 0
+                ),
+                axis=1
+            )
+            ohlcv_data['atr'] = ohlcv_data['tr'].rolling(window=14).mean()
+
             # Determine buffer based on timeframe
-            timeframe = params['timeframe']
             timeframe_mapping = {
                 "1d": pd.Timedelta(days=5),
                 "1h": pd.Timedelta(hours=12),
@@ -140,10 +141,15 @@ if "pf" in st.session_state:
             filtered_data = ohlcv_data[
                 (ohlcv_data["timestamp"] >= entry_timestamp - buffer) &
                 (ohlcv_data["timestamp"] <= exit_timestamp + buffer)
-            ]
+            ].copy()
+
+            # Calculate dynamic ATR bands for every data point based on the close price
+            filtered_data["upper_band"] = filtered_data["close"] + 3 * filtered_data["atr"]
+            filtered_data["lower_band"] = filtered_data["close"] - 1.5 * filtered_data["atr"]
 
             fig_trade = go.Figure()
 
+            # Plot candlestick chart
             fig_trade.add_trace(go.Candlestick(
                 x=filtered_data["timestamp"],
                 open=filtered_data["open"],
@@ -151,6 +157,22 @@ if "pf" in st.session_state:
                 low=filtered_data["low"],
                 close=filtered_data["close"],
                 name="Price"
+            ))
+
+            # Plot dynamic ATR bands following the price action
+            fig_trade.add_trace(go.Scatter(
+                x=filtered_data["timestamp"],
+                y=filtered_data["upper_band"],
+                mode="lines",
+                line=dict(color="green", width=2),
+                name="Upper ATR Band (Close + 3*ATR)"
+            ))
+            fig_trade.add_trace(go.Scatter(
+                x=filtered_data["timestamp"],
+                y=filtered_data["lower_band"],
+                mode="lines",
+                line=dict(color="red", width=2),
+                name="Lower ATR Band (Close - 1.5*ATR)"
             ))
 
             # Determine entry and exit prices for markers

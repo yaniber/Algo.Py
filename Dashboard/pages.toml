@@ -14,6 +14,11 @@ name = "Strategy Backtest"
 icon = "📊"
 
 [[pages]]
+path = "backtest_visualizer.py"
+name = "Backtest Visualizer"
+icon = "🔎"
+
+[[pages]]
 path = "strategy_deployment.py"
 name = "Strategy Deployment"
 icon = "🚀"
