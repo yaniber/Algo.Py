@@ -25,10 +25,6 @@ Whether you're automating a simple moving average strategy or building high-freq
 - [✨ Features](#-features)
 - [🚀 Installation](#-installation)
 - [⚡ Quick Start](#-quick-start)
-- [🛠️ Usage](#-usage)
-- [📂 Project Structure](#-project-structure)
-- [📈 Examples](#-examples)
-- [🔧 Configuration](#-configuration)
 - [📝 Roadmap](#-roadmap)
 - [🤝 Contributing](#-contributing)
 - [📜 License](#-license)
@@ -146,7 +142,6 @@ We welcome contributions! To contribute:
 
 ## 📬 **Contact**
 📧 Email: **himanshuclash@gmail.com**  
-🐦 Twitter: [@yourhandle](https://twitter.com/yourhandle)  
 📌 LinkedIn: [Himanshu Rathore](https://www.linkedin.com/in/rathore-himanshu/)  
 
 ---
