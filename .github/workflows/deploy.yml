@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install mkdocs-material[imaging] mkdocstrings mkdocstrings-python
-          
+          pip install mkdocs==1.6.1 mkdocs-material==9.6.5 mkdocstrings==0.28.1 mkdocstrings-python
+
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
