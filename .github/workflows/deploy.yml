@@ -21,20 +21,20 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install uv (faster dependency management)
+      - name: Install uv (Fast Dependency Manager)
         run: |
           python -m pip install --upgrade pip
           pip install uv
 
-      - name: Install MkDocs dependencies
+      - name: Install MkDocs and Dependencies
         run: |
           uv pip install --system mkdocs==1.6.1
           uv pip install --system mkdocs-material==9.6.5
-          uv pip install --system mkdocstrings==0.28.1
-          uv pip install --system mkdocstrings-python
-          uv pip install --system mkdocs-autorefs
+          uv pip install --system mkdocstrings==0.28.2
+          uv pip install --system mkdocstrings-python==1.16.2
+          uv pip install --system mkdocs-autorefs==1.4.0
 
-      - name: Install Imaging Dependencies (Fix for "social" plugin)
+      - name: Install Imaging Dependencies (Fix for "social" Plugin)
         run: |
           uv pip install --system "mkdocs-material[imaging]"
 

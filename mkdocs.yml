@@ -59,11 +59,9 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          selection:
-            filters:
-              - "!^_"  # Exclude private members
-          rendering:
+          options:
             show_source: false
+            docstring_style: google
 
 extra:
   social:
