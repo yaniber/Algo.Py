@@ -59,9 +59,6 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          selection:
-            filters:
-              - "!^_"  # Exclude private members
           rendering:
             show_source: false
 
