@@ -5,9 +5,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -19,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install mkdocs-material mkdocstrings
+          pip install mkdocs-material[imaging] mkdocstrings
 
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
