@@ -21,9 +21,22 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install Dependencies
+      - name: Install uv (faster dependency management)
         run: |
-          pip install mkdocs==1.6.1 mkdocs-material==9.6.5 mkdocstrings==0.28.1 mkdocstrings-python
+          python -m pip install --upgrade pip
+          pip install uv
+
+      - name: Install MkDocs dependencies
+        run: |
+          uv pip install mkdocs==1.6.1
+          uv pip install mkdocs-material==9.6.5
+          uv pip install mkdocstrings==0.28.1
+          uv pip install mkdocstrings-python
+          uv pip install mkdocs-autorefs
+
+      - name: Install Imaging Dependencies (Fix for "social" plugin)
+        run: |
+          uv pip install "mkdocs-material[imaging]"
 
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
