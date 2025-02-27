@@ -6,6 +6,7 @@
 
 🔹 **Join the official Discord Server:** [Click here](https://discord.gg/tpFrXJYFsf)  
 🎥 **View Algo.Py's Tutorials:** [Watch on YouTube](https://www.youtube.com/watch?v=J_krHhmF_No&list=PLzFdtaNfzY4USYC9UYjTz5hgHrJjNwGZS) 
+Docs : https://himanshu2406.github.io/Algo.Py/
 
 The framework empowers users to:  
 - **Accelerate strategy development** with live data streaming, multi-market/crypto support, and Python-native tools.  
