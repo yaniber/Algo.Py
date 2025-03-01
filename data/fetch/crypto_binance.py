@@ -11,26 +11,42 @@ def fetch_ohlcv_binance(symbol, timeframe, start_date):
     })
     
     since = int(start_date.timestamp() * 1000)
-    max_retries = 5  # Increased from 3
+    all_data = []
+    max_retries = 5
     backoff_factor = 1
 
-    for attempt in range(max_retries):
-        try:
-            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=1000)
-            # Always return DataFrame even if empty
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
-            return df  # Return even if empty
-            
-        except ccxt.RateLimitExceeded:
-            sleep_time = backoff_factor * (2 ** attempt)
-            time.sleep(sleep_time)
-        except Exception as e:
-            print(f"Error on {symbol}: {str(e)}")
-            return pd.DataFrame()  # Return empty DF on non-rate errors
+    while True:
+        ohlcv = []
+        for attempt in range(max_retries):
+            try:
+                ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=1000)
+                break
+            except ccxt.RateLimitExceeded:
+                sleep_time = backoff_factor * (2 ** attempt)
+                time.sleep(sleep_time)
+            except Exception as e:
+                print(f"Error on {symbol}: {str(e)}")
+                ohlcv = []
+                break
+        
+        if not ohlcv:
+            break
 
-    # After max retries return empty DataFrame instead of None
-    return pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        all_data.extend(ohlcv)
+
+        # Update 'since' to one millisecond after the last timestamp fetched.
+        last_timestamp = ohlcv[-1][0]
+        new_since = last_timestamp + 1
+        if new_since == since:
+            break
+        since = new_since
+
+    # Convert the accumulated data into a DataFrame.
+    df = pd.DataFrame(all_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    if not df.empty:
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
+    return df
+
 
 def fetch_symbol_list_binance(type='spot', suffix='USDT'):
     '''
