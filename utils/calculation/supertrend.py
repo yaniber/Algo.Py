@@ -1,4 +1,4 @@
-from vectorbt import vbt
+#from vectorbt import vbt
 from numba import njit
 import numpy as np
 from utils.db.fetch import fetch_entries
