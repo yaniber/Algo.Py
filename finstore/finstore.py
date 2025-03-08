@@ -6,23 +6,31 @@ import concurrent.futures
 from tqdm import tqdm
 import os
 import sys
-from finstore.finstore_s3 import S3Adapter
+from finstore.finstore_s3 import S3Adapter, PartitionType
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class Finstore:
-    def __init__(self, market_name :str , timeframe : str, base_directory : str ='database/finstore', enable_append : bool = True, limit_data_lookback : int = -1, pair : str = ''):
+    def __init__(self, 
+                 market_name :str , 
+                 timeframe : str, 
+                 base_directory : str ='database/finstore', 
+                 enable_append : bool = True, 
+                 limit_data_lookback : int = -1, 
+                 pair : str = '',
+                 partition_type: PartitionType = PartitionType.NONE):
         self.base_directory = base_directory
         self.market_name = market_name
         self.timeframe = timeframe
         self.enable_append = enable_append
         self.limit_data_lookback = limit_data_lookback
-        self.s3 = S3Adapter(bucket_name="my-ohlcv-bucket") 
+        self.partition_type = partition_type
+        self.s3_adapter = S3Adapter(bucket_name="my-ohlcv-bucket") 
         self.pair = pair
         self.read = self.Read(self)
         self.write = self.Write(self)
         self.stream = self.Stream(self)
-        self.S3_mode = self.S3_Layer(self)
+        self.s3 = self.S3(self)
         self.list_items_in_dir() # For debugging
 
     def list_items_in_dir(self):
@@ -396,30 +404,24 @@ class Finstore:
             # Read and return the DataFrame
             return pd.read_parquet(file_path)
     
-    class S3_Layer:
-
+    class S3:
         def __init__(self, finstore_instance):
             self.market_name = finstore_instance.market_name
             self.timeframe = finstore_instance.timeframe
             self.base_directory = finstore_instance.base_directory
             self.enable_append = finstore_instance.enable_append
             self.limit_data_lookback = finstore_instance.limit_data_lookback
-            self.s3 = finstore_instance.s3
+            self.s3_adapter = finstore_instance.s3_adapter
+            self.partition_type = finstore_instance.partition_type
 
-        def store_symbol_s3(self, symbol: str, df: pd.DataFrame):
-            """
-            Example method to store symbol data into S3 using the S3Adapter.
-            """
-            self.s3.store_symbol(self.market_name, self.timeframe, symbol, df, append=self.enable_append)
+        def store(self, symbol: str, df: pd.DataFrame):
+            self.s3_adapter.store_symbol(self.market_name, self.timeframe, symbol, df,
+                                append=self.enable_append, partition_type=self.partition_type)
 
-        def fetch_symbol_s3(self, symbol: str) -> pd.DataFrame:
-            """
-            Example method to fetch symbol data from S3.
-            """
-            return self.s3.fetch_symbol(self.market_name, self.timeframe, symbol)
+        def fetch(self, symbol: str, start_date: str = '', end_date: str = '') -> pd.DataFrame:
+            return self.s3_adapter.fetch_symbol(self.market_name, self.timeframe, symbol,
+                                        partition_type=self.partition_type, start_date=start_date, end_date=end_date)
 
-        def delete_symbol_s3(self, symbol: str):
-            """
-            Example method to delete symbol data in S3.
-            """
-            self.s3.delete_symbol(self.market_name, self.timeframe, symbol)
+        def delete(self, symbol: str, partition_value: str = ''):
+            self.s3_adapter.delete_symbol(self.market_name, self.timeframe, symbol,
+                                partition_type=self.partition_type, partition_value=partition_value)
