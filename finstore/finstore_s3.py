@@ -89,14 +89,15 @@ class S3Adapter:
                 print(f"Stored {len(group)} rows to s3://{self.bucket_name}/{key}")
 
     def fetch_symbol(self, market_name: str, timeframe: str, symbol: str,
-                     partition_type: PartitionType = PartitionType.NONE,
-                     start_date: str = '', end_date: str = '') -> pd.DataFrame:
+                 partition_type: PartitionType = PartitionType.NONE,
+                 start_date: str = '', end_date: str = '') -> pd.DataFrame:
         """
         Fetches OHLCV data for a symbol.
 
-        If partition_type is DAILY or MONTHLY, start_date and end_date must be given.
-        The method will retrieve each partition file within the date range and merge them.
-        Otherwise, a single file is fetched.
+        If partition_type is NONE, a single file is fetched.
+        If partition_type is DAILY or MONTHLY, and start_date/end_date are provided,
+        it retrieves partitions in that date range.
+        Otherwise, it lists all available partitions for that symbol.
         """
         if partition_type in (None, PartitionType.NONE):
             key = f"{market_name}/{timeframe}/{symbol}/ohlcv_data.parquet"
@@ -107,28 +108,36 @@ class S3Adapter:
                 self.cache[key] = df
             return df if df is not None else pd.DataFrame()
         else:
-            if not (start_date and end_date):
-                raise ValueError("For partitioned fetching, provide start_date and end_date")
-            start_dt = pd.to_datetime(start_date)
-            end_dt = pd.to_datetime(end_date)
             keys = []
-            if partition_type == PartitionType.DAILY:
-                date_range = pd.date_range(start_dt, end_dt, freq='D')
-                for dt in date_range:
-                    partition_value = dt.strftime('%Y-%m-%d')
-                    key = f"{market_name}/{timeframe}/{symbol}/{partition_value}/ohlcv_data.parquet"
-                    keys.append(key)
-            elif partition_type == PartitionType.MONTHLY:
-                current = start_dt.to_period('M')
-                end_period = end_dt.to_period('M')
-                while current <= end_period:
-                    partition_value = current.strftime('%Y-%m')
-                    key = f"{market_name}/{timeframe}/{symbol}/{partition_value}/ohlcv_data.parquet"
-                    keys.append(key)
-                    current = current + 1
+            if start_date and end_date:
+                start_dt = pd.to_datetime(start_date)
+                end_dt = pd.to_datetime(end_date)
+                if partition_type == PartitionType.DAILY:
+                    date_range = pd.date_range(start_dt, end_dt, freq='D')
+                    for dt in date_range:
+                        partition_value = dt.strftime('%Y-%m-%d')
+                        key = f"{market_name}/{timeframe}/{symbol}/{partition_value}/ohlcv_data.parquet"
+                        keys.append(key)
+                elif partition_type == PartitionType.MONTHLY:
+                    current = start_dt.to_period('M')
+                    end_period = end_dt.to_period('M')
+                    while current <= end_period:
+                        partition_value = current.strftime('%Y-%m')
+                        key = f"{market_name}/{timeframe}/{symbol}/{partition_value}/ohlcv_data.parquet"
+                        keys.append(key)
+                        current = current + 1
+                else:
+                    raise ValueError("Unsupported partition type. Use DAILY or MONTHLY.")
             else:
-                raise ValueError("Unsupported partition type. Use DAILY or MONTHLY.")
-
+                # No date range provided: list all partition keys for the symbol
+                prefix = f"{market_name}/{timeframe}/{symbol}/"
+                response = self.s3.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)
+                if 'Contents' in response:
+                    for obj in response['Contents']:
+                        key = obj['Key']
+                        if key.endswith("ohlcv_data.parquet"):
+                            keys.append(key)
+            
             dfs = []
             with ThreadPoolExecutor(max_workers=8) as executor:
                 future_to_key = {executor.submit(self._download_parquet_if_exists, key): key for key in keys}
@@ -144,6 +153,7 @@ class S3Adapter:
                 return combined
             else:
                 return pd.DataFrame()
+
 
     def delete_symbol(self, market_name: str, timeframe: str, symbol: str,
                       partition_type: PartitionType = PartitionType.NONE, partition_value: str = ''):
