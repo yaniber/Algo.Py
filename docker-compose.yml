@@ -1,4 +1,14 @@
 services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+    volumes:
+      - ./database/localstack:/var/lib/localstack
   app:
     container_name: algopy_app
     build:
@@ -6,6 +16,16 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8501:8501"
+      - "8888:8888"
     volumes:
       - .:/app  # Mount the current directory to /app in the container
       - ./database/db:/app/database/db  # Mount the volume for finstore database
+    depends_on:
+      - localstack
+    environment:
+      # Fake AWS credentials + local region
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      # We'll pass this to our data layer
+      - S3_ENDPOINT_URL=http://localstack:4566

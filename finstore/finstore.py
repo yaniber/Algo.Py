@@ -6,6 +6,7 @@ import concurrent.futures
 from tqdm import tqdm
 import os
 import sys
+from finstore.finstore_s3 import S3Adapter
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -16,10 +17,12 @@ class Finstore:
         self.timeframe = timeframe
         self.enable_append = enable_append
         self.limit_data_lookback = limit_data_lookback
+        self.s3 = S3Adapter(bucket_name="my-ohlcv-bucket") 
         self.pair = pair
         self.read = self.Read(self)
         self.write = self.Write(self)
         self.stream = self.Stream(self)
+        self.S3_mode = self.S3_Layer(self)
         self.list_items_in_dir() # For debugging
 
     def list_items_in_dir(self):
@@ -392,3 +395,31 @@ class Finstore:
             
             # Read and return the DataFrame
             return pd.read_parquet(file_path)
+    
+    class S3_Layer:
+
+        def __init__(self, finstore_instance):
+            self.market_name = finstore_instance.market_name
+            self.timeframe = finstore_instance.timeframe
+            self.base_directory = finstore_instance.base_directory
+            self.enable_append = finstore_instance.enable_append
+            self.limit_data_lookback = finstore_instance.limit_data_lookback
+            self.s3 = finstore_instance.s3
+
+        def store_symbol_s3(self, symbol: str, df: pd.DataFrame):
+            """
+            Example method to store symbol data into S3 using the S3Adapter.
+            """
+            self.s3.store_symbol(self.market_name, self.timeframe, symbol, df, append=self.enable_append)
+
+        def fetch_symbol_s3(self, symbol: str) -> pd.DataFrame:
+            """
+            Example method to fetch symbol data from S3.
+            """
+            return self.s3.fetch_symbol(self.market_name, self.timeframe, symbol)
+
+        def delete_symbol_s3(self, symbol: str):
+            """
+            Example method to delete symbol data in S3.
+            """
+            self.s3.delete_symbol(self.market_name, self.timeframe, symbol)

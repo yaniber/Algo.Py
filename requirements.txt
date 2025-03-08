@@ -1,7 +1,7 @@
 ccxt==4.2.65
 diskcache==5.6.3
 nsepython==2.8
-plotly==5.22.0
+plotly==6.0.0
 psycopg2==2.9.9
 pytest==8.3.2
 python-dotenv==1.0.1
@@ -13,9 +13,9 @@ yfinance==0.2.40
 jugaad-trader==0.19
 pyotp==2.9.0
 duckdb==1.1.0
-duckdb_engine==0.13.2
-dask==2024.10.0
-dask-expr==1.1.16
+duckdb_engine==0.15.0
+dask==2025.2.0
+dask-expr==2.0.0
 streamlit-autorefresh==1.0.1
 cloudscraper==1.2.71
 binance-connector==3.11.0
@@ -25,3 +25,5 @@ mkdocs==1.6.1
 mkdocs-material==9.6.5
 mkdocstrings==0.28.1
 streamlit-aggrid==1.1.0
+boto3
+awscli

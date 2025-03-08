@@ -92,6 +92,7 @@ RUN pip install --quiet --no-cache-dir jupyter ipykernel
 RUN python -m ipykernel install --user --name=python3 --display-name "Python 3"
 
 ENV PYTHONPATH="${PYTHONPATH}:/app"
+EXPOSE 8888
 
 # Command to keep the container running
 CMD ["tail", "-f", "/dev/null"]
