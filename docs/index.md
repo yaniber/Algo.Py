@@ -5,15 +5,15 @@ Welcome to the documentation for **Algo.Py**, a comprehensive quantitative tradi
 
 **Navigation:**
 
-- [Getting Started](./getting_started/)
-  - [Installation](installation.md)
-  - [Quickstart Guide](quickstart.md)
-- [Core Features](./core_features/)
-  - [FinStore](finstore.md)
-  - [Strategy Development](strategy_development.md)
-  - [Deployment](deployment.md)
-  - [Features Overview](features.md)
-- [Configuration](./configuration/)
-  - [Basic Configuration](configuration.md)
-  - [Advanced Topics](advanced_topics.md)
-- [API Reference](api-reference/index.md)
+- **Getting Started:**
+  - [Installation](./installation/)
+  - [Quickstart Guide](./quickstart/)
+- **Core Features:**
+  - [FinStore](./finstore/)
+  - [Strategy Development](./strategy_development/)
+  - [Deployment](./deployment/)
+  - [Features Overview](./features/)
+- **Configuration:**
+  - [Basic Configuration](./configuration/)
+  - [Advanced Topics](./advanced_topics/)
+- [API Reference](./api-reference/)
