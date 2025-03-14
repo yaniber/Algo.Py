@@ -9,17 +9,17 @@ This guide provides step-by-step instructions for performing a backtest, deployi
 
    - After installation, open a terminal and run:
      
-     '''bash
+     ```bash
      docker exec -it algopy_app bash
-     '''
+     ```
    
    - [Recommended] Alternatively, if you use VS Code, install the Docker extension, navigate to Containers, right-click on `algopy_app`, and select **Attach Visual Studio Code**. This opens a new window attached to the container, eliminating the need to manually export ports and providing a perfect environment (including running Jupyter notebooks seamlessly).
 
    - Once inside the container (starting from the `/app` directory), launch the Streamlit application:
      
-     '''bash
+     ```bash
      streamlit run Dashboard/main_dash.py
-     '''
+     ```
 
    Open your browser (typically at [http://localhost:8501](http://localhost:8501)) and click on the **Strategy Backtest** link in the navigation.
 
