@@ -3,20 +3,20 @@
 
 Follow these steps to set up **Algo.Py**:
 
-1. **Clone the Repository:**
+**Clone the Repository:**
 
    ```
    git clone https://github.com/himanshu2406/Algo.Py.git
    cd Algo.Py
    ```
 
-2. **Start the Docker Container:**
+**Start the Docker Container:**
 
    ```
    docker compose up -d
    ```
 
-3. **Install Your Preferred Backtesting Engine**
+**Install Your Preferred Backtesting Engine**
 
    You have the following options for backtesting:
    - **vectorbt**
