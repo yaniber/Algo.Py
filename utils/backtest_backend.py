@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path='config/.env')
 
-backend = os.getenv("VECTORBT_BACKEND", "vectorbt").lower()
+backend = os.getenv("BACKTEST_BACKEND", "vectorbt").lower()
 
 available_backends = {
     "vectorbt": "vectorbt",

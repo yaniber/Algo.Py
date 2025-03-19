@@ -18,6 +18,11 @@ import os
 from urllib.parse import urlencode
 import json
 
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='config/.env')
+
+BACKTEST_BACKEND = os.getenv("BACKTEST_BACKEND", "vectorbt").lower()
+
 # 📁 Directory structure for saving backtests
 SAVE_DIR = "saved_backtests"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -514,12 +519,27 @@ def show_backtester_page():
             st.dataframe(returns_df)
 
 
-            # Trade History
-            st.subheader("📝 Trade History")
+            if BACKTEST_BACKEND == 'vectorbtpro':
+                st.subheader("📝 Trade History")
+                st.dataframe(pf.trade_history)
+
+            # Trade Signals (Records in a human-readable format)
+            st.subheader("📌 Trade Signals")
             st.dataframe(pf.trades.records_readable)
         
 
         with st.spinner("Loading Advanced statistic plots..."):
+
+            if BACKTEST_BACKEND == 'vectorbtpro':
+                # Expanding Maximum Favorable Excursion (MFE)
+                st.subheader("📊 Expanding MFE")
+                fig_mfe = pf.trades.plot_expanding_mfe_returns()
+                st.plotly_chart(fig_mfe)
+
+                # Expanding Maximum Adverse Excursion (MAE)
+                st.subheader("📊 Expanding MAE")
+                fig_mae = pf.trades.plot_expanding_mae_returns()
+                st.plotly_chart(fig_mae)
 
             # Risk-adjusted Metrics: Sharpe & Sortino Ratios
             sharpe_ratio = pf.sharpe_ratio
@@ -650,12 +670,27 @@ def show_backtester_page():
                         returns_df = pf.returns.to_frame(name="Returns")
                         st.dataframe(returns_df)
 
-                        # 📑 Trade History
-                        st.subheader("📝 Trade History")
+                        if BACKTEST_BACKEND == 'vectorbtpro':
+                            st.subheader("📝 Trade History")
+                            st.dataframe(pf.trade_history)
+
+                        # Trade Signals (Records in a human-readable format)
+                        st.subheader("📌 Trade Signals")
                         st.dataframe(pf.trades.records_readable)
 
                         # 🔍 Advanced Metrics & Risk Analysis
                         with st.spinner("Loading Advanced Statistics..."):
+
+                            if BACKTEST_BACKEND == 'vectorbtpro':
+                                # Expanding Maximum Favorable Excursion (MFE)
+                                st.subheader("📊 Expanding MFE")
+                                fig_mfe = pf.trades.plot_expanding_mfe_returns()
+                                st.plotly_chart(fig_mfe)
+
+                                # Expanding Maximum Adverse Excursion (MAE)
+                                st.subheader("📊 Expanding MAE")
+                                fig_mae = pf.trades.plot_expanding_mae_returns()
+                                st.plotly_chart(fig_mae)
 
                             # 📈 Risk-adjusted Metrics: Sharpe & Sortino Ratios
                             sharpe_ratio = pf.sharpe_ratio

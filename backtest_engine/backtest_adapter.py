@@ -52,15 +52,13 @@ class BacktestAdapter:
     @property
     def benchmark_cumulative_returns(self):
         if BACKTEST_BACKEND == "vectorbt":
-            # vectorbt uses cumulative_returns as benchmark
             return self._pf.cumulative_returns()
         return self._pf.benchmark_cumulative_returns
 
     @property
     def trade_history(self):
         if BACKTEST_BACKEND == "vectorbt":
-            # vectorbt may not expose trade_history
-            return pd.DataFrame()
+            raise NotImplementedError('This method is not implemented in vectorbt')
         return self._pf.trade_history
     
     @property
@@ -77,13 +75,12 @@ class BacktestAdapter:
 
     def plot_expanding_mfe_returns(self):
         if BACKTEST_BACKEND == "vectorbt":
-            # No equivalent in vectorbt – return an empty figure or custom implementation
-            return go.Figure()
+            raise NotImplementedError('This method is not implemented in vectorbt')
         return self._pf.trades.plot_expanding_mfe_returns()
 
     def plot_expanding_mae_returns(self):
         if BACKTEST_BACKEND == "vectorbt":
-            return go.Figure()
+            raise NotImplementedError('This method is not implemented in vectorbt')
         return self._pf.trades.plot_expanding_mae_returns()
 
     @classmethod
