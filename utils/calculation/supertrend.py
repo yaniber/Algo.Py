@@ -1,5 +1,5 @@
 import utils.backtest_backend # imports backtester dynamically
-import backtester as vbt
+import abstractbt as vbt
 from numba import njit
 import numpy as np
 from utils.db.fetch import fetch_entries

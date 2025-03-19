@@ -24,6 +24,6 @@ try:
 except ImportError:
     raise ImportError(f"Could not import module '{module_name}'. Make sure it is installed.")
 
-sys.modules["backtester"] = mod
+sys.modules["abstractbt"] = mod
 
 setattr(builtins, "BACKTEST_BACKEND", backend)

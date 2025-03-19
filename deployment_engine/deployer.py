@@ -1,6 +1,6 @@
 import pandas as pd
 import utils.backtest_backend # imports backtester dynamically
-import backtester as vbt
+import abstractbt as vbt
 from pandas.tseries.frequencies import to_offset
 from pathlib import Path
 import json
