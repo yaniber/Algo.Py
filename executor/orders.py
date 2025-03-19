@@ -1,5 +1,6 @@
 from strategy.private.stocks_on_the_move import stocks_on_the_move
-import vectorbt as vbt
+import utils.backtest_backend # imports backtester dynamically
+import backtester as vbt
 
 
 def get_latest_orders(open_positions, portfolio):

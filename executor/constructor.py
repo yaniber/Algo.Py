@@ -1,5 +1,6 @@
 import pandas as pd
-import vectorbt as vbt
+import utils.backtest_backend # imports backtester dynamically
+import backtester as vbt
 from strategy.private.SOTM import get_signals
 
 def construct_portfolio(init_cash : float = 100000,
