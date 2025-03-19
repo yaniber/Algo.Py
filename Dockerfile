@@ -28,7 +28,9 @@ RUN pip install --quiet --no-cache-dir 'pybind11' \
     && pip install --quiet --no-cache-dir --ignore-installed 'llvmlite' \
     && pip install --quiet --no-cache-dir --no-deps 'universal-portfolios' \
     && pip install --quiet --no-cache-dir 'pandas_datareader' \
-    && pip install --quiet --no-cache-dir jupyter ipykernel
+    && pip install --quiet --no-cache-dir jupyter ipykernel supervisor
+
+COPY supervisord.conf /etc/supervisord.conf
 
 RUN python -m ipykernel install --user --name=python3 --display-name "Python 3"
 
@@ -42,6 +44,6 @@ RUN if [ "$BACKTEST_BACKEND" = "vectorbt" ]; then \
 ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 EXPOSE 8501
+EXPOSE 8888
 
-CMD streamlit run Dashboard/main_dash.py --server.port=8501 & \
-    tail -f /dev/null
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]

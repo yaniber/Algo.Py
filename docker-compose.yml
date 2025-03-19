@@ -8,5 +8,6 @@ services:
         - BACKTEST_BACKEND=vectorbt
     ports:
       - "8501:8501"
+      - "8888:8888"
     volumes:
       - .:/app
