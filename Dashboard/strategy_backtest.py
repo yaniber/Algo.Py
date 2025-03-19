@@ -641,13 +641,13 @@ def show_backtester_page():
                         fig_cum.update_layout(
                             yaxis_title="Cumulative Returns",
                             title="Cumulative Returns Curve",
-                            yaxis_type="log" if pf.cumulative_returns.max() > 10 else "linear"
+                            yaxis_type="log" if pf.cumulative_returns().max() > 10 else "linear"
                         )
                         st.plotly_chart(fig_cum)
 
                         # 📊 Returns Overview
                         st.subheader("📊 Returns Overview")
-                        returns_df = pf.returns.to_frame(name="Returns")
+                        returns_df = pf.returns().to_frame(name="Returns")
                         st.dataframe(returns_df)
 
                         # 📑 Trade History

@@ -4,8 +4,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - BACKTEST_BACKEND=vectorbt
     ports:
-      - "5000:5000"
+      - "8501:8501"
     volumes:
-      - .:/app  # Mount the current directory to /app in the container
-      - ./database/db:/app/database/db  # Mount the volume for finstore database
+      - .:/app
