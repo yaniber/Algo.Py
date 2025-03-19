@@ -106,7 +106,7 @@ class Backtester:
             slippage=self.slippage,
             allow_partial=self.allow_partial,
             freq=self._convert_timeframe_to_freq(),
-            sim_start=self.start_date, # TODO : Implement this outside vbt , trim close data based on sim_start , sim_end
+            sim_start=self.start_date,
             sim_end=self.end_date,
             )
 

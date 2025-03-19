@@ -52,7 +52,7 @@ def discover_strategies():
                     }
                 elif obj == StrategyBaseClass:
                     pass
-                elif inspect.isclass(obj):
+                elif inspect.isclass(obj) and name.lower() != 'any':
                     print(f'Invalid Strategy Module Detected. Please check syntax again : {name}')
         except Exception as e: 
             print(f'Error in addind to STRATEGY_REGISTRY : {e}')

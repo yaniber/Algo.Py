@@ -98,7 +98,11 @@ class BacktestAdapter:
             - Omit `open`, `sim_start`, and `sim_end`
             - Translate size_type "valuepercent" into numeric code 2.
         """
-        if BACKTEST_BACKEND == "vectorbtbro":
+        # TODO : check that close data has data within start and end date
+        # TODO : add sim start and end date implementation for regular vectorbt
+        # TODO : Assert valid close , open data & entries, exits matrix. 
+        # TODO : Assert valid common indexing for all data. 
+        if BACKTEST_BACKEND == "vectorbtpro":
             pf = vbt.Portfolio.from_signals(
                 close=close,
                 open=open,

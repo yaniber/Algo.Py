@@ -155,6 +155,7 @@ def asset_selection_widget(market_name, timeframe, default_symbols=None, default
     else:
         symbols = []
 
+    # TODO : Add exception handling in case default symbol during deployment isn't present in list (USDT symbol selected but default is BTC)
     selected = st.multiselect(
         "Select assets:", 
         options=symbols,
