@@ -10,7 +10,7 @@ Follow these steps to set up **Algo.Py**:
    cd Algo.Py
    ```
 
-**Select your Backtestin Backend:**
+**Select your Backtesting Backend:**
 
    Change your backtest backend to be installed in the `docker-compose.yml` file
 
