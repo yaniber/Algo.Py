@@ -10,21 +10,28 @@ Follow these steps to set up **Algo.Py**:
    cd Algo.Py
    ```
 
+
+
 **Select your Backtesting Backend:**
 
    Change your backtest backend to be installed in the `docker-compose.yml` file
 
-   The default is set to 'vectorbt' [Options : 'vectorbt' , 'vectorbtpro', 'nautilus' (coming soon)]
+   The default is set to `vectorbt` [Options : `vectorbt` , `vectorbtpro`, `nautilus` (coming soon)]
+   
    ```
    args:
       - BACKTEST_BACKEND=vectorbt
    ```
 
-   Note : In case `vectorbtpro` is chosen , change your .env appropriately : 
+   
+   
+   **Note** : In case `vectorbtpro` is chosen , change your .env appropriately : 
 
    ```
    BACKTEST_BACKEND=vectorbtpro
    ```
+
+
 
 **Start the Docker Container:**
 
@@ -54,9 +61,9 @@ Follow these steps to set up **Algo.Py**:
 
    2. **Uninstall `vectorbt` (Free Version):**
 
-        ```
-        pip uninstall vectorbt
-        ```
+      ```
+      pip uninstall vectorbt
+      ```
 
    3. **Install `vectorbtpro`:**
       - **Clone your copy of `vectorbtpro` and install it:**

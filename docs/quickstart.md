@@ -22,9 +22,9 @@ This guide provides step-by-step instructions for performing a backtest, deployi
    **Access environment inside container**
     open a terminal and run:
      
-     ```bash
-     docker exec -it algopy_app bash
-     ```
+   ```bash
+   docker exec -it algopy_app bash
+   ```
    
    - [Recommended] Alternatively, if you use VS Code, install the Docker extension, navigate to Containers, right-click on `algopy_app`, and select **Attach Visual Studio Code**. This opens a new window attached to the container, eliminating the need to manually export ports and providing a perfect environment (including running Jupyter notebooks seamlessly).
 
