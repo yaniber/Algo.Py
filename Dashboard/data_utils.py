@@ -117,7 +117,7 @@ def show_data_utils_page():
     # Section 3: View Existing Data
     with st.expander("👀 View Existing Data", expanded=True):
         view_market = st.selectbox("Market", ["crypto_binance", "indian_equity"], key="view_market")
-        view_timeframe = st.selectbox("Timeframe", ["1d", "4h", "1h", "15m"], key="view_timeframe")
+        view_timeframe = st.selectbox("Timeframe", ["1d", "4h", "1h", "15m", "1m"], key="view_timeframe")
         if view_market == 'crypto_binance':
             pair = st.selectbox("Pair", ["BTC", "USDT"], key="pair")
         else:
