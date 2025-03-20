@@ -7,6 +7,8 @@
 🔹 **Join the official Discord Server:** [Click here](https://discord.gg/tpFrXJYFsf)  
 🎥 **View Algo.Py's Tutorials:** [Watch on YouTube](https://www.youtube.com/watch?v=J_krHhmF_No&list=PLzFdtaNfzY4USYC9UYjTz5hgHrJjNwGZS) 
 
+Docs : https://himanshu2406.github.io/Algo.Py/
+
 The framework empowers users to:  
 - **Accelerate strategy development** with live data streaming, multi-market/crypto support, and Python-native tools.  
 - **Eliminate friction** between backtesting and live trading via one-click workflows.  
@@ -25,10 +27,6 @@ Whether you're automating a simple moving average strategy or building high-freq
 - [✨ Features](#-features)
 - [🚀 Installation](#-installation)
 - [⚡ Quick Start](#-quick-start)
-- [🛠️ Usage](#-usage)
-- [📂 Project Structure](#-project-structure)
-- [📈 Examples](#-examples)
-- [🔧 Configuration](#-configuration)
 - [📝 Roadmap](#-roadmap)
 - [🤝 Contributing](#-contributing)
 - [📜 License](#-license)
@@ -146,7 +144,6 @@ We welcome contributions! To contribute:
 
 ## 📬 **Contact**
 📧 Email: **himanshuclash@gmail.com**  
-🐦 Twitter: [@yourhandle](https://twitter.com/yourhandle)  
 📌 LinkedIn: [Himanshu Rathore](https://www.linkedin.com/in/rathore-himanshu/)  
 
 ---
