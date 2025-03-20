@@ -10,13 +10,29 @@ Follow these steps to set up **Algo.Py**:
    cd Algo.Py
    ```
 
+**Select your Backtesting Backend:**
+
+   Change your backtest backend to be installed in the `docker-compose.yml` file
+
+   The default is set to 'vectorbt' [Options : 'vectorbt' , 'vectorbtpro', 'nautilus' (coming soon)]
+   ```
+   args:
+      - BACKTEST_BACKEND=vectorbt
+   ```
+
+   Note : In case `vectorbtpro` is chosen , change your .env appropriately : 
+
+   ```
+   BACKTEST_BACKEND=vectorbtpro
+   ```
+
 **Start the Docker Container:**
 
    ```
    docker compose up -d
    ```
 
-**Install Your Preferred Backtesting Engine**
+**More information on Backtest Backends**
 
    You have the following options for backtesting:
    - **vectorbt**
@@ -24,8 +40,11 @@ Follow these steps to set up **Algo.Py**:
    - **nautilus trader** *(WIP)*
 
    To enable backtesting, you must install one of these libraries first.
+   This is done during the docker build process by selecting the appropriate option from available Backtest Backends.
 
-   **Steps to Install:**
+   However , if you've installed `vectorbt` and want to migrate to `vectorbtpro` instead , you can do this easily - 
+
+   **Steps to Re-Install:**
 
    1. **Enter the Docker Container:**
 
@@ -33,23 +52,24 @@ Follow these steps to set up **Algo.Py**:
       docker exec -it algopy_app bash
       ```
 
-   2. **Install `vectorbt` (Free Version):**
-      - **Switch to the `freebt_migration` branch:**
+   2. **Uninstall `vectorbt` (Free Version):**
+
         ```
-        git checkout freebt_migration
-        ```
-      - **Install `vectorbt`:**
-        ```
-        cd vectorbt
-        pip install -e .
+        pip uninstall vectorbt
         ```
 
    3. **Install `vectorbtpro`:**
-      - **Clone your copy of `vectorbtpro` and install it similarly:**
+      - **Clone your copy of `vectorbtpro` and install it:**
         ```
         cd vectorbt.pro-main
         pip install -e .
         ```
+   
+   4. **Change your .env**
 
-   4. **Nautilus Trader (WIP):**
+      ```
+      BACKTEST_BACKEND=vectorbtpro
+      ```
+
+   **Nautilus Trader (WIP):**
       Nautilus Trader integration is currently a work in progress and has not yet been integrated with **Algo.Py**. Stay tuned for future updates!

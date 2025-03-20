@@ -7,7 +7,20 @@ This guide provides step-by-step instructions for performing a backtest, deployi
 
 1. **Start the Dashboard:**
 
-   - After installation, open a terminal and run:
+   - After installation, streamlit dashboard and jupyter notebook are both automatically spun up, you can access these using : 
+
+   **Streamlit**
+   ```
+   localhost:8501
+   ```
+
+   **Jupyter**
+   ```
+   localhost:8888
+   ```
+
+   **Access environment inside container**
+    open a terminal and run:
      
      ```bash
      docker exec -it algopy_app bash
