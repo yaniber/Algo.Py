@@ -155,6 +155,7 @@ def asset_selection_widget(market_name, timeframe, default_symbols=None, default
     else:
         symbols = []
 
+    # TODO : Add exception handling in case default symbol during deployment isn't present in list (USDT symbol selected but default is BTC)
     selected = st.multiselect(
         "Select assets:", 
         options=symbols,
@@ -548,7 +549,7 @@ with st.expander("New Deployment Configuration", expanded=True):
 
         if preloaded_config:
             market_index = 0 if preloaded_config['market_name'] == "crypto_binance" else 1
-            timeframe_index = ["15m", "1h", "4h", "1d"].index(preloaded_config['timeframe'])
+            timeframe_index = ["15m", "1h", "4h", "1D",].index(preloaded_config['timeframe'])
         else:
             market_index = 0
             timeframe_index = 0
@@ -560,7 +561,7 @@ with st.expander("New Deployment Configuration", expanded=True):
         )
         timeframe = st.selectbox(
             "Timeframe", 
-            options=["15m", "1h", "4h", "1d"],
+            options=["15m", "1h", "4h", "1D"],
             index=timeframe_index
         )
         

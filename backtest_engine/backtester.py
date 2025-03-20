@@ -1,5 +1,7 @@
 import pandas as pd
-import vectorbtpro as vbt
+import utils.backtest_backend # imports backtester dynamically
+import abstractbt as vbt
+from backtest_engine.backtest_adapter import BacktestAdapter
 from pandas.tseries.frequencies import to_offset
 from pathlib import Path
 import json
@@ -90,7 +92,7 @@ class Backtester:
         entries, exits, close_data, open_data = self.strategy_object.run(ohlcv_data)
 
         self.progress_callback(50, "Simulating portfolio...")
-        pf = vbt.Portfolio.from_signals(
+        pf = BacktestAdapter.from_signals(
             close=close_data,
             open=open_data,
             entries=entries,
@@ -106,7 +108,7 @@ class Backtester:
             freq=self._convert_timeframe_to_freq(),
             sim_start=self.start_date,
             sim_end=self.end_date,
-        )
+            )
 
         self.progress_callback(75, "Saving results...")
 
@@ -305,7 +307,7 @@ class Backtester:
             params = json.load(f)
 
         # Load portfolio
-        portfolio = vbt.Portfolio.load(str(portfolio_file))
+        portfolio = BacktestAdapter(vbt.Portfolio.load(str(portfolio_file)))
 
         return portfolio, params
 
