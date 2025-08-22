@@ -46,21 +46,8 @@ ENV WINEPREFIX=/app/.wine
 ENV DISPLAY=:99
 ENV WINEDLLOVERRIDES="mscoree,mshtml="
 
-# Create wine user and initialize Wine environment with proper permissions
-RUN useradd -m -s /bin/bash wineuser && \
- mkdir -p /app/.wine && \
- chown -R wineuser:wineuser /app
-
-# Initialize Wine environment with proper setup
-RUN su - wineuser -c "cd /app && \
- export WINEARCH=win64 && \
- export WINEPREFIX=/app/.wine && \
- export WINEDLLOVERRIDES=\"mscoree,mshtml=\" && \
- wineboot --init && \
- echo 'Wine environment initialized for MT5'" || echo "Wine preparation completed"
-
-# Change ownership back to root
-RUN chown -R root:root /app
+# Create directory for Wine data (initialization happens at runtime)
+RUN mkdir -p /app/.wine
 
 # Copy MT5 setup script
 COPY scripts/setup_mt5_wine.sh /app/scripts/

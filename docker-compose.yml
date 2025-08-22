@@ -20,6 +20,12 @@ services:
       # MT5 specific environment variables
       - MT5_ENABLED=true
       - MT5_AUTO_START=false  # Set to true to auto-start MT5 terminal
+      # XM Broker specific settings
+      - MT5_BROKER=xm
+      - MT5_BROKER_URL=https://www.xm.com/fr/mt5
+    # Fix for Wine "Bad system call" errors - allow necessary syscalls
+    security_opt:
+      - seccomp:./docker/seccomp-wine.json
     volumes:
       - .:/app
       # Mount wine directory for MT5 data persistence
