@@ -14,13 +14,20 @@ RUN apt-get update && \
  && apt-get clean && \
  rm -rf /var/lib/apt/lists/*
 
-# Install Wine for MetaTrader5 support on Linux (minimal setup)
+# Install Wine for MetaTrader5 support on Linux (comprehensive setup)
 RUN dpkg --add-architecture i386 && \
  apt-get update && \
  apt-get install -yq --no-install-recommends \
  wine \
+ wine32 \
+ wine64 \
+ supervisor \
  && apt-get clean && \
  rm -rf /var/lib/apt/lists/*
+
+# Install winetricks separately if available
+RUN wget -O /usr/local/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks && \
+ chmod +x /usr/local/bin/winetricks || echo "Winetricks installation skipped"
 
 RUN wget https://netcologne.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz && \
   tar -xvzf ta-lib-0.4.0-src.tar.gz && \
@@ -33,20 +40,24 @@ RUN rm -R ta-lib ta-lib-0.4.0-src.tar.gz
 
 RUN pip install --no-cache-dir TA-Lib==0.4.32
 
-# Configure Wine environment for MetaTrader5 (optional)
+# Configure Wine environment for MetaTrader5 (comprehensive setup)
 ENV WINEARCH=win64
 ENV WINEPREFIX=/app/.wine
 ENV DISPLAY=:99
+ENV WINEDLLOVERRIDES="mscoree,mshtml="
 
-# Create wine user and initialize basic Wine environment
+# Create wine user and initialize Wine environment with proper permissions
 RUN useradd -m -s /bin/bash wineuser && \
+ mkdir -p /app/.wine && \
  chown -R wineuser:wineuser /app
 
-# Initialize Wine environment (basic setup only)
+# Initialize Wine environment with proper setup
 RUN su - wineuser -c "cd /app && \
  export WINEARCH=win64 && \
  export WINEPREFIX=/app/.wine && \
- echo 'Wine environment prepared for MT5'" || echo "Wine preparation completed"
+ export WINEDLLOVERRIDES=\"mscoree,mshtml=\" && \
+ wineboot --init && \
+ echo 'Wine environment initialized for MT5'" || echo "Wine preparation completed"
 
 # Change ownership back to root
 RUN chown -R root:root /app
@@ -86,5 +97,6 @@ ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 EXPOSE 8501
 EXPOSE 8888
+EXPOSE 1234
 
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]

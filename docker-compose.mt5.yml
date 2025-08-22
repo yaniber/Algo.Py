@@ -1,0 +1,37 @@
+# Docker Compose override for MetaTrader5 Wine development
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.mt5.yml up -d
+
+version: "3.3"
+services:
+  app:
+    ports:
+      - "1234:1234"  # rpyc service port for remote Python execution
+      - "5900:5900"  # VNC port (if VNC server is added)
+    environment:
+      # Enhanced Wine configuration based on community best practices
+      - WINEARCH=win64
+      - WINEPREFIX=/app/.wine
+      - DISPLAY=:99
+      - WINEDLLOVERRIDES=mscoree,mshtml=
+      # MT5 specific environment variables
+      - MT5_ENABLED=true
+      - MT5_AUTO_START=false  # Set to true to auto-start MT5 terminal
+    volumes:
+      # Mount wine directory for persistence
+      - mt5_wine_data:/app/.wine
+      # Mount MT5 configuration for easier access
+      - ./config/mt5:/app/config/mt5:ro
+    command: >
+      sh -c "
+        echo 'Starting enhanced Wine+MT5 environment...' &&
+        supervisord -c /etc/supervisord.conf
+      "
+    healthcheck:
+      test: ["CMD", "supervisorctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mt5_wine_data:
+    driver: local

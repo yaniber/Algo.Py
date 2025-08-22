@@ -213,6 +213,38 @@ sudo apt install wine wine32 wine64 winetricks
 
 ### Environment Configuration
 
+#### Docker Wine Environment (Enhanced Setup)
+
+The Docker container is pre-configured with comprehensive Wine environment based on [community best practices](https://medium.com/@asc686f61/use-mt5-in-linux-with-docker-and-python-f8a9859d65b1):
+
+```bash
+# Wine Configuration (automatically set in Docker)
+export WINEARCH=win64
+export WINEPREFIX=/app/.wine
+export DISPLAY=:99
+export WINEDLLOVERRIDES="mscoree,mshtml="
+
+# Supervisord Services Available:
+# - xvfb: Virtual display server for headless operation
+# - mt5: MetaTrader 5 terminal (when configured)
+# - streamlit: Main dashboard application
+# - jupyter: Notebook server
+
+# Check all services
+supervisorctl status
+
+# Start/Stop MT5 terminal
+supervisorctl start mt5
+supervisorctl stop mt5
+supervisorctl restart mt5
+
+# View service logs
+supervisorctl tail -f mt5
+supervisorctl tail -f xvfb
+```
+
+#### Manual Wine Environment
+
 For Wine environments, set these variables:
 ```bash
 export WINEARCH=win64
