@@ -1,37 +1,29 @@
 # Docker Compose override for MetaTrader5 Wine development
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.mt5.yml up -d
+# 
+# NOTE: MT5 functionality is now included in the main docker-compose.yml by default!
+# This file is kept for reference and advanced customization.
+#
+# The main docker-compose.yml now includes:
+# ✅ Wine 64-bit environment
+# ✅ MT5 ports (1234 for rpyc, 5900 for VNC)  
+# ✅ Wine environment variables
+# ✅ Persistent wine data volumes
+# ✅ Supervisord service management
+#
+# To use the main setup with MT5:
+#   docker-compose up -d
+#   docker exec -it algopy_app ./scripts/setup_mt5_wine.sh
+#
+# Advanced usage for development (optional overrides):
+#   docker-compose -f docker-compose.yml -f docker-compose.mt5.yml up -d
 
 version: "3.3"
 services:
   app:
-    ports:
-      - "1234:1234"  # rpyc service port for remote Python execution
-      - "5900:5900"  # VNC port (if VNC server is added)
     environment:
-      # Enhanced Wine configuration based on community best practices
-      - WINEARCH=win64
-      - WINEPREFIX=/app/.wine
-      - DISPLAY=:99
-      - WINEDLLOVERRIDES=mscoree,mshtml=
-      # MT5 specific environment variables
-      - MT5_ENABLED=true
-      - MT5_AUTO_START=false  # Set to true to auto-start MT5 terminal
-    volumes:
-      # Mount wine directory for persistence
-      - mt5_wine_data:/app/.wine
-      # Mount MT5 configuration for easier access
-      - ./config/mt5:/app/config/mt5:ro
-    command: >
-      sh -c "
-        echo 'Starting enhanced Wine+MT5 environment...' &&
-        supervisord -c /etc/supervisord.conf
-      "
-    healthcheck:
-      test: ["CMD", "supervisorctl", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-volumes:
-  mt5_wine_data:
-    driver: local
+      # Additional development settings
+      - MT5_AUTO_START=true  # Override to auto-start MT5
+      - MT5_DEBUG=true       # Enable debug logging
+    # Additional development volumes (uncomment if needed)
+    # volumes:
+    #   - ./logs/mt5:/app/logs/mt5  # For MT5 log persistence

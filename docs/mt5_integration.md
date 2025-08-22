@@ -174,24 +174,30 @@ The MT5 integration supports both Windows and Linux environments:
 
 While the MetaTrader5 Python package is Windows-only, you can still use MT5 functionality on Linux through Wine:
 
-#### Option 1: Using Pre-configured Docker Environment
-The Docker image includes Wine and setup scripts:
+#### Automatic MT5 Environment with Docker Compose
+
+The main Docker Compose setup now **automatically includes MT5 support** with Wine pre-configured:
 
 ```bash
-# Build and run the Docker container
+# Build and run with MT5 support automatically included
 docker-compose up -d
 
-# Enter the container
-docker exec -it algopy_container bash
+# The container now includes:
+# ✅ Wine 64-bit environment pre-installed
+# ✅ Xvfb virtual display for headless operation  
+# ✅ Supervisord for service management
+# ✅ MT5 ports exposed (1234 for rpyc, 5900 for VNC)
+# ✅ Persistent Wine data volumes
 
-# Run the MT5 Wine setup script
-/app/scripts/setup_mt5_wine.sh
+# Complete the MT5 setup
+docker exec -it algopy_app ./scripts/setup_mt5_wine.sh
 
-# Install MetaTrader5 Python package in Wine
-wine python -m pip install MetaTrader5
+# Manage MT5 services
+docker exec -it algopy_app supervisorctl status
+docker exec -it algopy_app supervisorctl start mt5
 ```
 
-#### Option 2: Manual Wine Setup
+#### Manual Wine Setup
 For local development or custom installations:
 
 ```bash

@@ -7,7 +7,31 @@ services:
       args:
         - BACKTEST_BACKEND=vectorbt
     ports:
-      - "8501:8501"
-      - "8888:8888"
+      - "8501:8501"  # Streamlit
+      - "8888:8888"  # Jupyter
+      - "1234:1234"  # rpyc service port for remote Python execution (MT5)
+      - "5900:5900"  # VNC port for remote access (MT5)
+    environment:
+      # Enhanced Wine configuration for MetaTrader5 support
+      - WINEARCH=win64
+      - WINEPREFIX=/app/.wine
+      - DISPLAY=:99
+      - WINEDLLOVERRIDES=mscoree,mshtml=
+      # MT5 specific environment variables
+      - MT5_ENABLED=true
+      - MT5_AUTO_START=false  # Set to true to auto-start MT5 terminal
     volumes:
       - .:/app
+      # Mount wine directory for MT5 data persistence
+      - mt5_wine_data:/app/.wine
+      # Mount MT5 configuration for easier access
+      - ./config/mt5:/app/config/mt5:ro
+    healthcheck:
+      test: ["CMD", "supervisorctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mt5_wine_data:
+    driver: local
