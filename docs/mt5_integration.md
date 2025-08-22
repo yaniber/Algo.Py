@@ -105,7 +105,26 @@ The system automatically fetches historical data from your MT5 terminal for back
 - 1 week (1w)
 - 1 month (1M)
 
-## Troubleshooting
+### Wine-Specific Issues (Linux)
+
+1. **"Wine not found"**:
+   - Verify Wine installation: `wine --version`
+   - Check Wine architecture: `echo $WINEARCH`
+   - Ensure Wine prefix exists: `ls -la /app/.wine`
+
+2. **"MT5 terminal not found"**:
+   - Check installation path: `/app/.wine/drive_c/Program Files/MetaTrader 5/`
+   - Try manual installation: `wine mt5setup.exe`
+   - Verify terminal executable exists
+
+3. **"Wine initialization failed"**:
+   - Set Wine environment: `export WINEARCH=win64 WINEPREFIX=/app/.wine`
+   - Install required components: `winetricks vcrun2019`
+   - Check Wine logs: `wine regedit` to test Wine functionality
+
+4. **"Display issues"**:
+   - For headless systems, use virtual display: `export DISPLAY=:99`
+   - Start Xvfb if needed: `Xvfb :99 -screen 0 1024x768x24`
 
 ### Connection Issues
 1. **"Not connected to MT5"**: 
@@ -149,20 +168,86 @@ The system automatically fetches historical data from your MT5 terminal for back
 
 ## Docker Deployment
 
-The MT5 integration works in Docker environments with some important considerations:
+The MT5 integration supports both Windows and Linux environments:
 
-- **Package Availability**: The MetaTrader5 Python package is Windows-only and cannot be installed in Linux Docker containers
-- **Graceful Degradation**: The code handles the missing package gracefully, allowing other features to work normally
-- **Windows Containers**: If running Windows containers, you can manually install the MetaTrader5 package after deployment
-- **Production Setup**: For production deployments, consider running MT5 on a separate Windows server and connecting via network
+### Linux Docker Containers (via Wine)
 
-### Installing MetaTrader5 in Windows Environments
+While the MetaTrader5 Python package is Windows-only, you can still use MT5 functionality on Linux through Wine:
 
-If you're running on Windows (including Windows containers), you can install the MetaTrader5 package:
+#### Option 1: Using Pre-configured Docker Environment
+The Docker image includes Wine and setup scripts:
 
 ```bash
-pip install MetaTrader5
+# Build and run the Docker container
+docker-compose up -d
+
+# Enter the container
+docker exec -it algopy_container bash
+
+# Run the MT5 Wine setup script
+/app/scripts/setup_mt5_wine.sh
+
+# Install MetaTrader5 Python package in Wine
+wine python -m pip install MetaTrader5
 ```
+
+#### Option 2: Manual Wine Setup
+For local development or custom installations:
+
+```bash
+# Install Wine (Ubuntu/Debian)
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install wine wine32 wine64 winetricks
+
+# Run the setup script
+./scripts/setup_mt5_wine.sh
+
+# Follow the instructions to configure your environment
+```
+
+### Windows Containers/Native
+- **Native Support**: Direct MetaTrader5 installation without Wine
+- **Full Performance**: No emulation overhead
+- **Simple Setup**: `pip install MetaTrader5`
+
+### Environment Configuration
+
+For Wine environments, set these variables:
+```bash
+export WINEARCH=win64
+export WINEPREFIX=/app/.wine  # or ~/.wine_mt5 for local
+export DISPLAY=:99  # for headless systems
+
+# Your MT5 credentials
+MT5_LOGIN=your_account_number
+MT5_PASSWORD=your_password  
+MT5_SERVER=your_broker_server
+MT5_PATH=/app/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe
+```
+
+### Running with Wine
+
+To run Python scripts with MT5 support on Linux:
+
+```bash
+# Start virtual display (if headless)
+Xvfb :99 -screen 0 1024x768x24 &
+
+# Set Wine environment
+export WINEARCH=win64 WINEPREFIX=/app/.wine
+
+# Run your Python script through Wine
+wine python your_mt5_script.py
+```
+
+### Important Notes
+
+- **Python Package**: The MetaTrader5 package must be installed within the Wine environment
+- **Terminal Required**: MT5 terminal must be installed and accessible through Wine
+- **Display**: Wine applications may require a display server (Xvfb for headless systems)
+- **Performance**: Wine adds overhead but allows Linux compatibility
+- **Graceful Degradation**: Code handles missing package gracefully when Wine/MT5 isn't available
 
 ## Code Examples
 

@@ -22,4 +22,4 @@ duckdb==1.2.1
 python-binance==1.0.28
 websocket-client==1.8.0
 pandas-ta==0.3.14b0
-# MetaTrader5 - Windows-only package, installed separately when available
+# MetaTrader5==5.0.45  # Windows-only package - install manually on Windows or in Wine environment
