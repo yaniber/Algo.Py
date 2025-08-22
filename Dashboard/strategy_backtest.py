@@ -239,6 +239,68 @@ def commodity_selection_widget(commodities_data):
     )
     update_selection(selected, filtered)
 
+def mt5_forex_selection_widget(forex_data):
+    st.subheader("💱 MT5 Forex Selection")
+    
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        pair_type = st.radio("Pair Type:", ["Major Pairs", "All Forex"], horizontal=True, key="mt5_forex_type")
+    
+    with col2:
+        symbols = forex_data.get(pair_type, [])
+        search_query = st.text_input("Search forex pairs:", key="mt5_forex_search")
+        filtered = [s for s in symbols if search_query.lower() in s.lower()]
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("Add all forex", help="Add all filtered forex pairs", key="add_all_forex"):
+                add_symbols(filtered)
+        with col_b:
+            if st.button("Clear forex", help="Clear forex selection", key="clear_forex"):
+                remove_symbols(filtered)
+        
+        container = st.container()
+        selected = container.multiselect(
+            f"Select {pair_type.lower()}:",
+            options=filtered,
+            default=[s for s in filtered if s in st.session_state.selected_symbols],
+            label_visibility="collapsed",
+            key="mt5_forex_multiselect"
+        )
+        update_selection(selected, filtered)
+
+def mt5_metals_selection_widget(metals_data):
+    st.subheader("🥇 MT5 Metals & Indices Selection")
+    
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        asset_type = st.radio("Asset Type:", ["Precious Metals", "Indices"], horizontal=True, key="mt5_metals_type")
+    
+    with col2:
+        symbols = metals_data.get(asset_type, [])
+        search_query = st.text_input("Search assets:", key="mt5_metals_search")
+        filtered = [s for s in symbols if search_query.lower() in s.lower()]
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button(f"Add all {asset_type.lower()}", help=f"Add all filtered {asset_type.lower()}", key="add_all_metals"):
+                add_symbols(filtered)
+        with col_b:
+            if st.button(f"Clear {asset_type.lower()}", help=f"Clear {asset_type.lower()} selection", key="clear_metals"):
+                remove_symbols(filtered)
+        
+        container = st.container()
+        selected = container.multiselect(
+            f"Select {asset_type.lower()}:",
+            options=filtered,
+            default=[s for s in filtered if s in st.session_state.selected_symbols],
+            label_visibility="collapsed",
+            key="mt5_metals_multiselect"
+        )
+        update_selection(selected, filtered)
+
 
 def display_selected_symbols():
     """Clean display of selected symbols"""
@@ -295,6 +357,36 @@ def get_available_assets(timeframe=None):
     except Exception as e:
         asset_groups['Indian Market'] = {'Error': [f'Failed to load Indian data: {str(e)}']}
 
+    # Try to get MT5 forex pairs if available
+    try:
+        from data.fetch.mt5_forex import get_forex_pairs, get_metal_pairs, get_indices
+        
+        forex_pairs = get_forex_pairs()
+        metal_pairs = get_metal_pairs()
+        indices = get_indices()
+        
+        asset_groups['MT5 Forex'] = {
+            'Major Pairs': [p for p in forex_pairs if any(major in p for major in ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'])][:10] or ['No major pairs'],
+            'All Forex': forex_pairs[:20] if forex_pairs else ['No forex pairs available'],
+        }
+        
+        asset_groups['MT5 Metals & Commodities'] = {
+            'Precious Metals': metal_pairs[:10] if metal_pairs else ['XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD'],
+            'Indices': indices[:10] if indices else ['US30', 'SPX500', 'NAS100', 'GER30']
+        }
+        
+    except Exception as e:
+        # Fallback to common MT5 symbols if connection fails
+        asset_groups['MT5 Forex'] = {
+            'Major Pairs': ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'],
+            'Minor Pairs': ['EURGBP', 'EURJPY', 'GBPJPY', 'CHFJPY', 'AUDNZD', 'GBPCHF']
+        }
+        
+        asset_groups['MT5 Metals & Commodities'] = {
+            'Precious Metals': ['XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD'],
+            'Indices': ['US30', 'SPX500', 'NAS100', 'GER30', 'UK100', 'JPN225']
+        }
+
     asset_groups.update({
         'US Market': {
             'NASDAQ': ['AAPL', 'TSLA', 'GOOG'],
@@ -344,7 +436,7 @@ def show_backtester_page():
     with st.expander("🌍 Asset Universe", expanded=True):
         with st.spinner("Loading Assets..."):
             asset_data = get_available_assets(timeframe)
-            tab1, tab2, tab3 = st.tabs(["Crypto", "Equities", "Commodities"])
+            tab1, tab2, tab3, tab4, tab5 = st.tabs(["Crypto", "Equities", "MT5 Forex", "MT5 Metals", "Commodities"])
             
             with tab1:
                 crypto_selection_widget(asset_data.get('Crypto', {}))
@@ -352,6 +444,10 @@ def show_backtester_page():
                 equity_selection_widget(asset_data.get('Indian Market', {}), 
                                     asset_data.get('US Market', {}))
             with tab3:
+                mt5_forex_selection_widget(asset_data.get('MT5 Forex', {}))
+            with tab4:
+                mt5_metals_selection_widget(asset_data.get('MT5 Metals & Commodities', {}))
+            with tab5:
                 commodity_selection_widget(asset_data.get('Commodities', {}))
             
             st.divider()

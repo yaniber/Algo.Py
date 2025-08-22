@@ -50,8 +50,9 @@ Whether you're automating a simple moving average strategy or building high-freq
 - Supports tick, candle, and bulk historical data across equities, crypto, and derivatives.  
 
 ### 🌍 Multi-Broker & Market Support  
-- **Markets**: Crypto (BTC, ETH, etc.), Indian (NSE, BSE), US (NYSE, NASDAQ), and more.  
-- **Brokers**: Integrated with Binance, Zerodha, Interactive Brokers, and custom broker APIs.  
+- **Markets**: Crypto (BTC, ETH, etc.), Indian (NSE, BSE), US (NYSE, NASDAQ), and Forex/CFDs via MetaTrader 5.  
+- **Brokers**: Integrated with Binance, Zerodha, MetaTrader 5, Interactive Brokers, and custom broker APIs.  
+- **MT5 Integration**: Full support for forex pairs, precious metals, indices, and CFDs through MetaTrader 5.  
 
 ### 🤖 Intelligent OMS & RMS  
 - **Smart OMS**:  
