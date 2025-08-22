@@ -17,3 +17,11 @@ deploy_logs/*
 *.db*
 to-do.txt
 .cache*
+
+# Wine and MT5 specific ignores
+*.wine_mt5
+.wine*
+mt5setup.exe
+python-*.exe
+*.env.mt5
+.wine/

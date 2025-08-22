@@ -107,22 +107,29 @@ The system automatically fetches historical data from your MT5 terminal for back
 
 ### Wine-Specific Issues (Linux)
 
-1. **"Wine not found"**:
+1. **"Bad system call" errors (FIXED)**:
+   - **Cause**: Docker seccomp profile blocking Wine syscalls
+   - **Solution**: Now included in docker-compose.yml: `security_opt: seccomp:./docker/seccomp-wine.json`
+   - **Verify**: Run `./scripts/diagnose_mt5_wine.sh` to check
+
+2. **"Wine not found"**:
    - Verify Wine installation: `wine --version`
    - Check Wine architecture: `echo $WINEARCH`
    - Ensure Wine prefix exists: `ls -la /app/.wine`
 
-2. **"MT5 terminal not found"**:
+3. **"MT5 terminal not found"**:
    - Check installation path: `/app/.wine/drive_c/Program Files/MetaTrader 5/`
-   - Try manual installation: `wine mt5setup.exe`
+   - For XM broker: Download installer from https://www.xm.com/fr/mt5
+   - Install manually: `wine /path/to/xm-mt5setup.exe /auto`
    - Verify terminal executable exists
 
-3. **"Wine initialization failed"**:
+4. **"Wine initialization failed"**:
    - Set Wine environment: `export WINEARCH=win64 WINEPREFIX=/app/.wine`
    - Install required components: `winetricks vcrun2019`
    - Check Wine logs: `wine regedit` to test Wine functionality
+   - **Critical**: Ensure seccomp profile is active in Docker
 
-4. **"Display issues"**:
+5. **"Display issues"**:
    - For headless systems, use virtual display: `export DISPLAY=:99`
    - Start Xvfb if needed: `Xvfb :99 -screen 0 1024x768x24`
 
@@ -172,14 +179,16 @@ The MT5 integration supports both Windows and Linux environments:
 
 ### Linux Docker Containers (via Wine)
 
-While the MetaTrader5 Python package is Windows-only, you can still use MT5 functionality on Linux through Wine:
+While the MetaTrader5 Python package is Windows-only, you can still use MT5 functionality on Linux through Wine.
 
-#### Automatic MT5 Environment with Docker Compose
+**⚠️ IMPORTANT**: Docker seccomp profile fix is now included to prevent "Bad system call" errors.
+
+#### Quick Setup for XM Broker
 
 The main Docker Compose setup now **automatically includes MT5 support** with Wine pre-configured:
 
 ```bash
-# Build and run with MT5 support automatically included
+# Build and run with MT5 support (includes seccomp fix)
 docker-compose up -d
 
 # The container now includes:
@@ -188,14 +197,20 @@ docker-compose up -d
 # ✅ Supervisord for service management
 # ✅ MT5 ports exposed (1234 for rpyc, 5900 for VNC)
 # ✅ Persistent Wine data volumes
+# ✅ Docker seccomp profile fix for Wine syscalls
 
-# Complete the MT5 setup
+# Complete the MT5 setup for XM broker
 docker exec -it algopy_app ./scripts/setup_mt5_wine.sh
+
+# Diagnose any issues
+docker exec -it algopy_app ./scripts/diagnose_mt5_wine.sh
 
 # Manage MT5 services
 docker exec -it algopy_app supervisorctl status
 docker exec -it algopy_app supervisorctl start mt5
 ```
+
+**For detailed XM broker setup instructions, see [docs/XM_SETUP.md](XM_SETUP.md).**
 
 #### Manual Wine Setup
 For local development or custom installations:
