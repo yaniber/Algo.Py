@@ -27,11 +27,18 @@ def test_docker_build():
         print("❌ SSL certificate workarounds not found in Dockerfile")
         return False
     
-    # Check that TA-Lib installation is commented out (since it was causing issues)
-    if '# Install TA-Lib - commented out due to SourceForge connectivity issues' in content:
-        print("✅ TA-Lib installation properly commented out")
+    # Check that TA-Lib is now properly included in requirements.txt
+    requirements_path = "/home/runner/work/Algo.Py/Algo.Py/requirements.txt"
+    if os.path.exists(requirements_path):
+        with open(requirements_path, 'r') as f:
+            req_content = f.read()
+        if 'TA-Lib==' in req_content:
+            print("✅ TA-Lib properly included in requirements.txt")
+        else:
+            print("❌ TA-Lib not found in requirements.txt")
+            return False
     else:
-        print("❌ TA-Lib installation not properly handled")
+        print("❌ requirements.txt not found")
         return False
         
     return True

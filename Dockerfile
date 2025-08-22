@@ -29,23 +29,6 @@ RUN dpkg --add-architecture i386 && \
 RUN wget -O /usr/local/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks && \
  chmod +x /usr/local/bin/winetricks || echo "Winetricks installation skipped"
 
-# Install TA-Lib - commented out due to SourceForge connectivity issues
-# If TA-Lib is needed, it can be installed at runtime or with alternative sources
-# RUN (wget https://downloads.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz || \
-#      wget https://sourceforge.net/projects/ta-lib/files/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz/download -O ta-lib-0.4.0-src.tar.gz || \
-#      wget https://netcologne.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz) && \
-#   tar -xvzf ta-lib-0.4.0-src.tar.gz && \
-#   cd ta-lib/ && \
-#   ./configure --prefix=/usr --build=unknown-unknown-linux && \
-#   make && \
-#   make install
-
-# RUN rm -R ta-lib ta-lib-0.4.0-src.tar.gz
-
-# TA-Lib Python package - commented out due to build dependencies
-# If needed, install at runtime: pip install TA-Lib==0.4.32
-# RUN pip install --no-cache-dir TA-Lib==0.4.32
-
 # Configure Wine environment for MetaTrader5 (comprehensive setup)
 ENV WINEARCH=win64
 ENV WINEPREFIX=/app/.wine
