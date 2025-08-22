@@ -2,35 +2,58 @@
 MetaTrader 5 data fetching module for Algo.Py
 
 This module provides functions to fetch OHLCV data and symbol lists from MetaTrader 5.
+Works on Windows natively and on Linux via Wine.
 """
 
-import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+
+# Try to import MetaTrader5, with Wine support for Linux environments
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    mt5 = None
+    MT5_AVAILABLE = False
 
 # Load environment variables
 load_dotenv(dotenv_path='config/.env')
 
 def initialize_mt5():
     """Initialize MT5 connection"""
+    if not MT5_AVAILABLE:
+        print("MetaTrader5 package not available. For Linux, ensure Wine is properly configured.")
+        return False
+        
     try:
+        # Set Wine environment if running on Linux
+        if os.name != 'nt':  # Not Windows
+            os.environ['WINEARCH'] = 'win64'
+            os.environ['WINEPREFIX'] = '/app/.wine'
+        
         # Get connection parameters from environment
         login = int(os.getenv('MT5_LOGIN', 0))
         password = os.getenv('MT5_PASSWORD')
         server = os.getenv('MT5_SERVER')
-        path = os.getenv('MT5_PATH')  # Optional
+        # Default Wine path for Linux, standard path for Windows
+        path = os.getenv('MT5_PATH')
+        if not path and os.name != 'nt':
+            path = '/app/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe'
         
         if not login or not password or not server:
             print("MT5 credentials not found in environment variables")
             return False
             
         # Initialize MT5 terminal
-        if path:
+        if path and os.path.exists(path):
             if not mt5.initialize(path=path):
                 print(f"Failed to initialize MT5 with path: {path}")
-                return False
+                # Try without path
+                if not mt5.initialize():
+                    print("Failed to initialize MT5")
+                    return False
         else:
             if not mt5.initialize():
                 print("Failed to initialize MT5")
@@ -42,11 +65,14 @@ def initialize_mt5():
             mt5.shutdown()
             return False
         
-        print(f"Successfully connected to MT5 account: {login}")
+        wine_status = " (via Wine)" if os.name != 'nt' else ""
+        print(f"Successfully connected to MT5 account: {login}{wine_status}")
         return True
         
     except Exception as e:
         print(f"Error initializing MT5: {str(e)}")
+        if os.name != 'nt':
+            print("Hint: For Linux, ensure Wine is properly configured and MT5 terminal is installed")
         return False
 
 def fetch_ohlcv_mt5(symbol, timeframe, start_date):

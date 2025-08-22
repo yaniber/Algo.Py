@@ -131,18 +131,19 @@ def test_dashboard_integration():
         return False
 
 def test_requirements():
-    """Check if requirements.txt includes MetaTrader5"""
+    """Check if requirements.txt handles MetaTrader5 appropriately"""
     print("\n🧪 Testing requirements.txt...")
     
     try:
         with open('requirements.txt', 'r') as f:
             content = f.read()
             
-        if 'MetaTrader5' in content:
-            print("✅ MetaTrader5 found in requirements.txt")
+        # MetaTrader5 should be commented out or absent due to Windows-only compatibility
+        if 'MetaTrader5' not in content or '# MetaTrader5' in content:
+            print("✅ MetaTrader5 correctly handled in requirements.txt (Windows-only package)")
             return True
-        else:
-            print("❌ MetaTrader5 not found in requirements.txt")
+        elif 'MetaTrader5' in content and '# MetaTrader5' not in content:
+            print("❌ MetaTrader5 should be commented out in requirements.txt (Windows-only)")
             return False
             
     except Exception as e:

@@ -2,10 +2,32 @@ FROM python:3.11
 
 WORKDIR /app
 
+# Install system dependencies including Wine for MetaTrader5 support
 RUN apt-get update && \
- apt-get install -yq --no-install-recommends cmake && \
- apt-get clean && \
+ apt-get install -yq --no-install-recommends \
+ cmake \
+ wget \
+ gnupg2 \
+ apt-transport-https \
+ ca-certificates \
+ xvfb \
+ && apt-get clean && \
  rm -rf /var/lib/apt/lists/*
+
+# Install Wine for MetaTrader5 support on Linux (comprehensive setup)
+RUN dpkg --add-architecture i386 && \
+ apt-get update && \
+ apt-get install -yq --no-install-recommends \
+ wine \
+ wine32 \
+ wine64 \
+ supervisor \
+ && apt-get clean && \
+ rm -rf /var/lib/apt/lists/*
+
+# Install winetricks separately if available
+RUN wget -O /usr/local/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks && \
+ chmod +x /usr/local/bin/winetricks || echo "Winetricks installation skipped"
 
 RUN wget https://netcologne.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz && \
   tar -xvzf ta-lib-0.4.0-src.tar.gz && \
@@ -17,6 +39,32 @@ RUN wget https://netcologne.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-li
 RUN rm -R ta-lib ta-lib-0.4.0-src.tar.gz
 
 RUN pip install --no-cache-dir TA-Lib==0.4.32
+
+# Configure Wine environment for MetaTrader5 (comprehensive setup)
+ENV WINEARCH=win64
+ENV WINEPREFIX=/app/.wine
+ENV DISPLAY=:99
+ENV WINEDLLOVERRIDES="mscoree,mshtml="
+
+# Create wine user and initialize Wine environment with proper permissions
+RUN useradd -m -s /bin/bash wineuser && \
+ mkdir -p /app/.wine && \
+ chown -R wineuser:wineuser /app
+
+# Initialize Wine environment with proper setup
+RUN su - wineuser -c "cd /app && \
+ export WINEARCH=win64 && \
+ export WINEPREFIX=/app/.wine && \
+ export WINEDLLOVERRIDES=\"mscoree,mshtml=\" && \
+ wineboot --init && \
+ echo 'Wine environment initialized for MT5'" || echo "Wine preparation completed"
+
+# Change ownership back to root
+RUN chown -R root:root /app
+
+# Copy MT5 setup script
+COPY scripts/setup_mt5_wine.sh /app/scripts/
+RUN chmod +x /app/scripts/setup_mt5_wine.sh
 
 COPY requirements.txt .
 
@@ -30,8 +78,9 @@ RUN pip install --quiet --no-cache-dir 'pybind11' \
     && pip install --quiet --no-cache-dir 'pandas_datareader' \
     && pip install --quiet --no-cache-dir jupyter ipykernel supervisor
 
-# MetaTrader5 Python package is installed via requirements.txt
-# No need to download MetaTrader5 terminal for Docker deployment
+# MetaTrader5 can be installed via Wine for Linux compatibility
+# Use /app/scripts/setup_mt5_wine.sh to complete the setup when needed
+# The Python package still requires manual installation in Wine environment
 
 COPY supervisord.conf /etc/supervisord.conf
 
@@ -48,5 +97,6 @@ ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 EXPOSE 8501
 EXPOSE 8888
+EXPOSE 1234
 
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]

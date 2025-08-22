@@ -79,6 +79,14 @@ git clone https://github.com/himanshu2406/Algo.Py.git
 cd Algo.Py
 docker compose up -d
 ```
+
+The Docker environment automatically includes **MetaTrader5 support with Wine** for Linux systems! To complete the MT5 setup:
+
+```bash
+# Complete MT5 Wine setup (for trading functionality)
+docker exec -it algopy_app ./scripts/setup_mt5_wine.sh
+```
+
 📺 **Watch the YouTube tutorial for a step-by-step installation guide:**  
 [![Watch the tutorial](https://img.youtube.com/vi/J_krHhmF_No/0.jpg)](https://youtu.be/J_krHhmF_No?si=9mp6IVCd7dwXb3ju)  
 

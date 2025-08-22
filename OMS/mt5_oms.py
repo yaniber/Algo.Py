@@ -3,29 +3,46 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from OMS.oms import OMS
-import MetaTrader5 as mt5
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
 from OMS.telegram import Telegram
 
+# Try to import MetaTrader5, with Wine support for Linux environments
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    mt5 = None
+    MT5_AVAILABLE = False
+    print("Warning: MetaTrader5 package not available. Ensure Wine is properly configured for Linux systems.")
+
 class MT5(OMS):   
     def __init__(self, login: int = None, password: str = None, server: str = None, path: str = None):
         super().__init__()
         
+        # Check if MetaTrader5 is available
+        if not MT5_AVAILABLE:
+            raise ImportError(
+                "MetaTrader5 package is not available. "
+                "For Linux systems, ensure Wine is installed and configured. "
+                "For Windows, install with: pip install MetaTrader5"
+            )
+            
         # Load environment variables if credentials not provided
         if not login or not password or not server:
             load_dotenv(dotenv_path='config/.env')
             self.login = login or int(os.getenv('MT5_LOGIN', 0))
             self.password = password or os.getenv('MT5_PASSWORD')
             self.server = server or os.getenv('MT5_SERVER')
-            self.path = path or os.getenv('MT5_PATH')  # Optional: path to MT5 terminal
+            # Default Wine path if not specified
+            self.path = path or os.getenv('MT5_PATH', '/app/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe')
         else:
             self.login = login
             self.password = password
             self.server = server
-            self.path = path
+            self.path = path or '/app/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe'
         
         if not self.login or not self.password or not self.server:
             raise ValueError("Variables for MT5_LOGIN, MT5_PASSWORD, or MT5_SERVER are not set.")
@@ -46,11 +63,19 @@ class MT5(OMS):
     def connect(self):
         """Establish connection to MT5 terminal"""
         try:
+            # Set Wine environment if running on Linux
+            if os.name != 'nt':  # Not Windows
+                os.environ['WINEARCH'] = 'win64'
+                os.environ['WINEPREFIX'] = '/app/.wine'
+                
             # Initialize MT5 terminal
-            if self.path:
+            if self.path and os.path.exists(self.path):
                 if not mt5.initialize(path=self.path):
                     print(f"Failed to initialize MT5 with path: {self.path}")
-                    return False
+                    # Try without path for Wine compatibility
+                    if not mt5.initialize():
+                        print("Failed to initialize MT5")
+                        return False
             else:
                 if not mt5.initialize():
                     print("Failed to initialize MT5")
@@ -63,11 +88,13 @@ class MT5(OMS):
                 return False
             
             self.connected = True
-            print(f"Successfully connected to MT5 account: {self.login}")
+            print(f"Successfully connected to MT5 account: {self.login} (Wine: {os.name != 'nt'})")
             return True
             
         except Exception as e:
             print(f"Error connecting to MT5: {str(e)}")
+            if os.name != 'nt':
+                print("Hint: For Linux, ensure Wine is properly configured and MT5 terminal is installed")
             return False
 
     def disconnect(self):
