@@ -1,8 +1,15 @@
 import streamlit as st
 from OMS.binance_oms import Binance
-from OMS.mt5_oms import MT5
 import pandas as pd
 import os
+
+# Try to import MT5 OMS, but handle gracefully if not available
+try:
+    from OMS.mt5_oms import MT5
+    MT5_AVAILABLE = True
+except ImportError:
+    MT5_AVAILABLE = False
+    MT5 = None
 
 # Initialize Binance OMS
 def initialize_binance():
@@ -14,6 +21,10 @@ def initialize_binance():
 
 # Initialize MT5 OMS
 def initialize_mt5():
+    if not MT5_AVAILABLE:
+        st.error("MetaTrader5 package not installed. Please install it via 'pip install MetaTrader5'")
+        return None
+    
     try:
         return MT5()
     except Exception as e:
@@ -25,9 +36,16 @@ def initialize_mt5():
 def sidebar_controls():
     with st.sidebar:
         st.header("Exchange Configuration")
+        
+        # Build exchange options based on availability
+        exchange_options = ["Binance"]
+        if MT5_AVAILABLE:
+            exchange_options.append("MetaTrader 5")
+        exchange_options.append("Other Exchanges...")
+        
         exchange = st.selectbox(
             "Select Exchange",
-            ["Binance", "MetaTrader 5", "Other Exchanges..."],
+            exchange_options,
             index=0
         )
         
@@ -38,11 +56,15 @@ def sidebar_controls():
                 index=0
             )
         elif exchange == "MetaTrader 5":
-            market_type = st.radio(
-                "Market Type",
-                ["Forex", "CFDs", "Metals"],
-                index=0
-            )
+            if MT5_AVAILABLE:
+                market_type = st.radio(
+                    "Market Type",
+                    ["Forex", "CFDs", "Metals"],
+                    index=0
+                )
+            else:
+                st.warning("MetaTrader5 package not installed")
+                market_type = None
         else:
             market_type = None
             

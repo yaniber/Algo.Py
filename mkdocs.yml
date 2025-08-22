@@ -82,6 +82,8 @@ nav:
       - Strategy Development: strategy_development.md
       - Deployment: deployment.md
       - Features Overview: features.md
+  - Integrations:
+      - MetaTrader 5: mt5_integration.md
   - Configuration:
       - Basic Configuration: configuration.md
       - Advanced Topics: advanced_topics.md

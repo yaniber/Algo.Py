@@ -25,12 +25,13 @@
 - **Caching:** Uses integrated caching to boost performance.
 
 ### Multi‑Broker & Market Support
-- **Market Versatility:** Supports both cryptocurrency (Binance) and Indian equities.
+- **Market Versatility:** Supports cryptocurrency (Binance), Indian equities, and MetaTrader 5 markets.
+- **MT5 Integration:** Full forex, CFDs, and metals trading through MetaTrader 5 platform.
 - **Extensible Architecture:** Easily integrate additional markets and data sources.
 - **Timeframe Flexibility:** Operates across various timeframes (1m, 5m, 15m, 1h, 4h, 1d).
 
 ### Order and Risk Management
-- **OMS Integration:** Connects with multiple order management systems (Telegram, Zerodha, Binance).
+- **OMS Integration:** Connects with multiple order management systems (Telegram, Zerodha, Binance, MT5).
 - **Automated Order Execution:** Executes trades automatically based on strategy signals.
 - **Risk Tools:** Provides basic risk management features such as position sizing and cash sharing.
 
