@@ -4,17 +4,28 @@ MetaTrader 5 data fetching module for Algo.Py
 This module provides functions to fetch OHLCV data and symbol lists from MetaTrader 5.
 """
 
-import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+
+# Try to import MetaTrader5, handle gracefully if not available (Linux/Mac environments)
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    mt5 = None
+    MT5_AVAILABLE = False
 
 # Load environment variables
 load_dotenv(dotenv_path='config/.env')
 
 def initialize_mt5():
     """Initialize MT5 connection"""
+    if not MT5_AVAILABLE:
+        print("MetaTrader5 package not available. This is expected on Linux/Mac systems.")
+        return False
+        
     try:
         # Get connection parameters from environment
         login = int(os.getenv('MT5_LOGIN', 0))

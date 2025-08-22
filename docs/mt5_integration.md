@@ -149,11 +149,20 @@ The system automatically fetches historical data from your MT5 terminal for back
 
 ## Docker Deployment
 
-The MT5 integration works in Docker environments. The Python MetaTrader5 package is installed automatically, but note that:
+The MT5 integration works in Docker environments with some important considerations:
 
-- You don't need to install the MT5 terminal in Docker
-- The MT5 connection will work through the API if you have MT5 running on the host
-- For production deployments, consider running MT5 on a separate Windows server
+- **Package Availability**: The MetaTrader5 Python package is Windows-only and cannot be installed in Linux Docker containers
+- **Graceful Degradation**: The code handles the missing package gracefully, allowing other features to work normally
+- **Windows Containers**: If running Windows containers, you can manually install the MetaTrader5 package after deployment
+- **Production Setup**: For production deployments, consider running MT5 on a separate Windows server and connecting via network
+
+### Installing MetaTrader5 in Windows Environments
+
+If you're running on Windows (including Windows containers), you can install the MetaTrader5 package:
+
+```bash
+pip install MetaTrader5
+```
 
 ## Code Examples
 

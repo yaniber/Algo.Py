@@ -30,7 +30,7 @@ RUN pip install --quiet --no-cache-dir 'pybind11' \
     && pip install --quiet --no-cache-dir 'pandas_datareader' \
     && pip install --quiet --no-cache-dir jupyter ipykernel supervisor
 
-# MetaTrader5 Python package is installed via requirements.txt
+# MetaTrader5 Python package is installed separately when available (Windows only)
 # No need to download MetaTrader5 terminal for Docker deployment
 
 COPY supervisord.conf /etc/supervisord.conf

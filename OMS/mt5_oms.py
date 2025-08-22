@@ -3,17 +3,29 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from OMS.oms import OMS
-import MetaTrader5 as mt5
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
 from OMS.telegram import Telegram
 
+# Try to import MetaTrader5, handle gracefully if not available (Linux/Mac environments)
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    mt5 = None
+    MT5_AVAILABLE = False
+    print("Warning: MetaTrader5 package not available. MT5 functionality will be disabled.")
+
 class MT5(OMS):   
     def __init__(self, login: int = None, password: str = None, server: str = None, path: str = None):
         super().__init__()
         
+        # Check if MetaTrader5 is available
+        if not MT5_AVAILABLE:
+            raise ImportError("MetaTrader5 package is not available. This is expected on Linux/Mac systems. MT5 functionality requires Windows.")
+            
         # Load environment variables if credentials not provided
         if not login or not password or not server:
             load_dotenv(dotenv_path='config/.env')
