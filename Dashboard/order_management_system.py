@@ -1,7 +1,14 @@
 import streamlit as st
-from OMS.binance_oms import Binance
 import pandas as pd
 import os
+
+# Try to import Binance OMS, but handle gracefully if not available
+try:
+    from OMS.binance_oms import Binance
+    BINANCE_AVAILABLE = True
+except ImportError:
+    BINANCE_AVAILABLE = False
+    Binance = None
 
 # Try to import MT5 OMS, but handle gracefully if not available
 try:
@@ -9,27 +16,139 @@ try:
     MT5_AVAILABLE = True
 except ImportError:
     MT5_AVAILABLE = False
-    MT5 = None
+    # Use mock MT5 for testing purposes
+    import sys
+    sys.path.append('/tmp')
+    try:
+        from mock_mt5 import MT5
+        MT5_AVAILABLE = True  # Enable UI with mock
+    except ImportError:
+        MT5 = None
 
 # Initialize Binance OMS
 def initialize_binance():
+    if not BINANCE_AVAILABLE:
+        st.error("Binance packages not installed. Please install binance dependencies.")
+        return None
     try:
         return Binance()
     except Exception as e:
         st.error(f"Failed to initialize Binance OMS: {str(e)}")
         return None
 
+# MT5 Credentials Configuration UI
+def mt5_credentials_config():
+    """Display MT5 credentials input form"""
+    st.subheader("🔐 MT5 Broker Credentials")
+    
+    with st.expander("Configure MT5 Connection", expanded=True):
+        st.info("Enter your MT5 broker credentials below, or leave blank to use config/.env file settings")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            login = st.text_input(
+                "Account Number (Login)", 
+                value=st.session_state.get('mt5_login', ''),
+                help="Your MT5 account number"
+            )
+            password = st.text_input(
+                "Password", 
+                value=st.session_state.get('mt5_password', ''),
+                type="password",
+                help="Your MT5 account password"
+            )
+        
+        with col2:
+            server = st.text_input(
+                "Server", 
+                value=st.session_state.get('mt5_server', ''),
+                help="Broker server name (e.g., 'MetaQuotes-Demo', 'ICMarkets-Live')"
+            )
+            path = st.text_input(
+                "MT5 Terminal Path (Optional)", 
+                value=st.session_state.get('mt5_path', ''),
+                help="Path to MT5 terminal executable (leave blank for auto-detection)"
+            )
+        
+        col_test, col_save = st.columns([1, 1])
+        
+        with col_test:
+            test_connection = st.button("🔍 Test Connection", type="secondary")
+        
+        with col_save:
+            save_to_session = st.button("💾 Save Credentials", type="primary")
+        
+        # Save credentials to session state
+        if save_to_session:
+            st.session_state['mt5_login'] = login
+            st.session_state['mt5_password'] = password
+            st.session_state['mt5_server'] = server
+            st.session_state['mt5_path'] = path
+            st.session_state['mt5_credentials_saved'] = True
+            st.success("✅ Credentials saved to session!")
+            st.rerun()
+        
+        # Test connection
+        if test_connection:
+            if login and password and server:
+                with st.spinner("Testing MT5 connection..."):
+                    try:
+                        # Test connection with provided credentials
+                        test_mt5 = MT5(
+                            login=int(login) if login else None,
+                            password=password if password else None,
+                            server=server if server else None,
+                            path=path if path else None
+                        )
+                        test_mt5.disconnect()
+                        st.success("✅ Connection test successful!")
+                    except Exception as e:
+                        st.error(f"❌ Connection test failed: {str(e)}")
+            else:
+                st.warning("Please fill in at least Login, Password, and Server fields to test connection.")
+        
+        return {
+            'login': int(login) if login else None,
+            'password': password if password else None,
+            'server': server if server else None,
+            'path': path if path else None
+        }
+
 # Initialize MT5 OMS
-def initialize_mt5():
+def initialize_mt5(credentials=None):
     if not MT5_AVAILABLE:
         st.error("MetaTrader5 package not installed. Please install it via 'pip install MetaTrader5'")
         return None
     
     try:
-        return MT5()
+        # Use provided credentials or fall back to environment variables
+        if credentials and any(credentials.values()):
+            return MT5(
+                login=credentials.get('login'),
+                password=credentials.get('password'),
+                server=credentials.get('server'),
+                path=credentials.get('path')
+            )
+        else:
+            # Check if credentials are saved in session state
+            if (st.session_state.get('mt5_credentials_saved') and 
+                st.session_state.get('mt5_login') and 
+                st.session_state.get('mt5_password') and 
+                st.session_state.get('mt5_server')):
+                return MT5(
+                    login=int(st.session_state.get('mt5_login')),
+                    password=st.session_state.get('mt5_password'),
+                    server=st.session_state.get('mt5_server'),
+                    path=st.session_state.get('mt5_path')
+                )
+            else:
+                # Fall back to environment variables
+                return MT5()
     except Exception as e:
         st.error(f"Failed to initialize MT5 OMS: {str(e)}")
-        st.info("Make sure MT5 credentials (MT5_LOGIN, MT5_PASSWORD, MT5_SERVER) are set in config/.env file")
+        if not credentials or not any(credentials.values()):
+            st.info("💡 Try entering your credentials using the form above, or make sure MT5 credentials are set in config/.env file")
         return None
 
 # Sidebar configuration
@@ -38,7 +157,9 @@ def sidebar_controls():
         st.header("Exchange Configuration")
         
         # Build exchange options based on availability
-        exchange_options = ["Binance"]
+        exchange_options = []
+        if BINANCE_AVAILABLE:
+            exchange_options.append("Binance")
         if MT5_AVAILABLE:
             exchange_options.append("MetaTrader 5")
         exchange_options.append("Other Exchanges...")
@@ -425,8 +546,13 @@ def main():
             st.write("Recent Failed Orders:", oms.failed_orders[-3:])
             
     elif exchange == "MetaTrader 5":
-        mt5_oms = initialize_mt5()
+        # MT5 credentials configuration UI
+        mt5_credentials = mt5_credentials_config()
+        
+        # Initialize MT5 OMS with credentials
+        mt5_oms = initialize_mt5(mt5_credentials)
         if not mt5_oms:
+            st.info("Please configure your MT5 credentials above to continue.")
             return
         
         # MT5-specific dashboard layout
