@@ -1,0 +1,54 @@
+# Ignore development files and directories to reduce Docker build context size
+.git
+.github
+.gitignore
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Ignore documentation and examples that aren't needed in container
+docs/
+*.md
+README.md
+Readme.md
+examples/
+
+# Ignore test files in production builds
+tests/
+test_*.py
+*_test.py
+
+# Ignore node_modules if any
+node_modules/
+npm-debug.log
+
+# Ignore temporary files
+tmp/
+temp/
+.tmp
+*.tmp
+*.temp
+
+# Ignore IDE files
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

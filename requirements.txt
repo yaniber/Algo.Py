@@ -1,3 +1,6 @@
+# Core numerical libraries first to avoid conflicts
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0,<3.0.0
 ccxt==4.2.65
 diskcache==5.6.3
 nsepython==2.8
@@ -14,6 +17,7 @@ cloudscraper==1.2.71
 binance-connector==3.11.0
 google-generativeai==0.8.4
 st-pages==1.0.1
+streamlit==1.39.0
 mkdocs==1.6.1
 mkdocs-material==9.6.5
 mkdocstrings==0.29.0
