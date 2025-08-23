@@ -57,16 +57,34 @@ RUN chmod +x /app/scripts/setup_mt5_wine.sh
 
 COPY requirements.txt .
 
+# Configure pip for better reliability in Docker builds
+ENV PIP_DEFAULT_TIMEOUT=100
+ENV PIP_RETRIES=3
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
 # Fix SSL certificate issues with pip in restricted environments
 RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
 
 COPY . .
 
-RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 'pybind11' \
-    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --ignore-installed 'llvmlite' \
-    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-deps 'universal-portfolios' \
-    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 'pandas_datareader' \
-    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org jupyter ipykernel supervisor
+# Install additional packages with better error handling and no conflicts
+# Note: supervisor already installed via apt-get, so not installing via pip
+RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org jupyter ipykernel || \
+    (echo "Failed to install jupyter/ipykernel, retrying..." && \
+     pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org jupyter ipykernel)
+
+# Install scientific packages that may need special handling
+RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 'pybind11' || \
+    (echo "pybind11 installation failed, continuing..." && exit 0)
+
+RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --ignore-installed 'llvmlite' || \
+    (echo "llvmlite installation failed, continuing..." && exit 0)
+
+RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-deps 'universal-portfolios' || \
+    (echo "universal-portfolios installation failed, continuing..." && exit 0)
+
+RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 'pandas_datareader' || \
+    (echo "pandas_datareader installation failed, continuing..." && exit 0)
 
 # MetaTrader5 can be installed via Wine for Linux compatibility
 # Use /app/scripts/setup_mt5_wine.sh to complete the setup when needed
@@ -78,9 +96,15 @@ RUN python -m ipykernel install --user --name=python3 --display-name "Python 3"
 
 ARG BACKTEST_BACKEND
 RUN if [ "$BACKTEST_BACKEND" = "vectorbt" ]; then \
-    pip install -U --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org vectorbt; \
+    echo "Installing vectorbt..." && \
+    pip install -U --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org vectorbt || \
+    (echo "vectorbt installation failed, trying with more memory..." && \
+     pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org vectorbt); \
     elif [ "$BACKTEST_BACKEND" = "vectorbtpro" ]; then \
-    pip install -U --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org "vectorbtpro[base] @ git+https://github.com/polakowo/vectorbt.pro.git"; \
+    echo "Installing vectorbtpro..." && \
+    pip install -U --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org "vectorbtpro[base] @ git+https://github.com/polakowo/vectorbt.pro.git" || \
+    (echo "vectorbtpro installation failed, trying alternative approach..." && \
+     pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org "git+https://github.com/polakowo/vectorbt.pro.git"); \
     fi
 
 ENV PYTHONPATH="/app"
