@@ -27,7 +27,14 @@ def test_docker_build():
         print("❌ SSL certificate workarounds not found in Dockerfile")
         return False
     
-    # Check that TA-Lib is now properly included in requirements.txt
+    # Check that TA-Lib native library installation is included in Dockerfile
+    if 'ta-lib-0.4.0-src.tar.gz' in content and './configure --prefix=/usr' in content:
+        print("✅ TA-Lib native library installation found in Dockerfile")
+    else:
+        print("❌ TA-Lib native library installation missing from Dockerfile")
+        return False
+    
+    # Check that TA-Lib is properly included in requirements.txt
     requirements_path = "/home/runner/work/Algo.Py/Algo.Py/requirements.txt"
     if os.path.exists(requirements_path):
         with open(requirements_path, 'r') as f:
