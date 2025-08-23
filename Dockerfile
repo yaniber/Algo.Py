@@ -29,17 +29,6 @@ RUN dpkg --add-architecture i386 && \
 RUN wget -O /usr/local/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks && \
  chmod +x /usr/local/bin/winetricks || echo "Winetricks installation skipped"
 
-RUN wget https://netcologne.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz && \
-  tar -xvzf ta-lib-0.4.0-src.tar.gz && \
-  cd ta-lib/ && \
-  ./configure --prefix=/usr --build=unknown-unknown-linux && \
-  make && \
-  make install
-
-RUN rm -R ta-lib ta-lib-0.4.0-src.tar.gz
-
-RUN pip install --no-cache-dir TA-Lib==0.4.32
-
 # Configure Wine environment for MetaTrader5 (comprehensive setup)
 ENV WINEARCH=win64
 ENV WINEPREFIX=/app/.wine
@@ -55,15 +44,16 @@ RUN chmod +x /app/scripts/setup_mt5_wine.sh
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Fix SSL certificate issues with pip in restricted environments
+RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
 
 COPY . .
 
-RUN pip install --quiet --no-cache-dir 'pybind11' \
-    && pip install --quiet --no-cache-dir --ignore-installed 'llvmlite' \
-    && pip install --quiet --no-cache-dir --no-deps 'universal-portfolios' \
-    && pip install --quiet --no-cache-dir 'pandas_datareader' \
-    && pip install --quiet --no-cache-dir jupyter ipykernel supervisor
+RUN pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 'pybind11' \
+    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --ignore-installed 'llvmlite' \
+    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --no-deps 'universal-portfolios' \
+    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 'pandas_datareader' \
+    && pip install --quiet --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org jupyter ipykernel supervisor
 
 # MetaTrader5 can be installed via Wine for Linux compatibility
 # Use /app/scripts/setup_mt5_wine.sh to complete the setup when needed
@@ -75,12 +65,12 @@ RUN python -m ipykernel install --user --name=python3 --display-name "Python 3"
 
 ARG BACKTEST_BACKEND
 RUN if [ "$BACKTEST_BACKEND" = "vectorbt" ]; then \
-    pip install -U --no-cache-dir vectorbt; \
+    pip install -U --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org vectorbt; \
     elif [ "$BACKTEST_BACKEND" = "vectorbtpro" ]; then \
-    pip install -U "vectorbtpro[base] @ git+https://github.com/polakowo/vectorbt.pro.git"; \
+    pip install -U --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org "vectorbtpro[base] @ git+https://github.com/polakowo/vectorbt.pro.git"; \
     fi
 
-ENV PYTHONPATH="${PYTHONPATH}:/app"
+ENV PYTHONPATH="/app"
 
 EXPOSE 8501
 EXPOSE 8888
